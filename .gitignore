@@ -1,0 +1,5 @@
+# Ignore .lst files (listing files)
+*.lst
+
+# Ignore .bin files (binary files)
+*.bin

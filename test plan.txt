@@ -1,0 +1,46 @@
+Retro computer :
+
+* Z80 CPU : Z84C0010PEC
+* Z80 SIO : Z84C4210PEC 
+* Z80 PIO : Z84C2010PEC
+* Z80 CTC : Z84C3010PEC
+* Crystal : 10 mhz, 6,xxx Mhz QX8T50B10.00000B50TT
+
+* flash rom : microchip SST39SF040 dip32
+
+* SRAM : alliance memory AS6C4008-55PCN
+
+
+Milestones :
+
+Flashrom programmer : arduino Mega - Done
+
+8MHz Quartz validation - Done
+Low frequency NE555-based oscillator - Done
+
+Simple NOP Z80 breadboard :
+	- Low frequency NE555 based oscillator (~7Hz) - Done
+	- High Frequency 8MHz oscillator - 
+
+Simple Reset circuit - Done
+
+Wiring of Z80 with the ROM and RAM - Done
+
+PCB for CPU / ROM-RAM / Clock / Reset - Done
+	- Reset : bug due to wrong footprint for transistor on eeasyEDA
+	- RD and WR lines : not wired in the PCB. Patched -> Working
+	- Slow clock - validated
+	- Fast Clock -  validated 
+
+New PCB : 
+CTC : validated 
+SIO / validation of serial communication :
+	- sending data validated (9600 bauds)
+
+PIO / validation with leds / 7segment leds
+
+Wiring of LCD Screen
+
+Test with sound chip
+
+ÿ
