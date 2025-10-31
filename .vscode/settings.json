@@ -1,0 +1,12 @@
+{
+    // Use ISO-8859-15 (Latin-9) encoding for .asm files
+    "files.associations": {
+        "*.asm": "z80-macroasm",
+        "*.lst": "z80-macroasm"
+
+    },
+    "[z80-macroasm]": {
+        "files.encoding": "iso885915"
+    },
+    "z80-macroasm.files.exclude": ""
+}
