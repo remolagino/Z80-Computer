@@ -231,7 +231,7 @@ INIT_VRAM: ; write at adress 0x0000
 
     LD HL, 0x2000
 .loop:
-    LD A, 0xAF ; value to write to initialize VRAM
+    LD A, 0xB7 ; value to write to initialize VRAM
     OUT (VRAM_DATA), A
     NOP
     NOP
@@ -308,9 +308,6 @@ WRITE_RAM: ; write at adress 0x0000
     NOP
     NOP
     NOP
-;    NOP
-;    NOP
-;    CALL Delay
     INC HL
     OR A
     JP NZ, .loop
