@@ -20,6 +20,14 @@ START:
     LD HL, Msg_Video
     CALL PRINT_STRING
 
+    CALL INIT_PATTERN_TABLE
+    CALL CHECK_PATTERN
+
+    LD HL, CR_LF
+    CALL PRINT_STRING
+    LD HL, CR_LF
+    CALL PRINT_STRING
+
 ;    LD B, 20
 ;status_loop:
     CALL READ_STATUS
@@ -29,8 +37,8 @@ START:
     CALL INIT_VRAM
     CALL WRITE_RAM
     CALL READ_RAM
-    CALL WRITE_PATTERN
- ;   CALL CHECK_PATTERN
+
+
 
     RET                     ; or HALT
 
@@ -249,7 +257,7 @@ INIT_VRAM: ; write at adress 0x0000
     POP AF
     RET
 
-WRITE_PATTERN:
+INIT_PATTERN_TABLE:
     PUSH AF
     PUSH BC
     PUSH HL
