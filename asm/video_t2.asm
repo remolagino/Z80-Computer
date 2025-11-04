@@ -20,7 +20,7 @@ START:
     LD HL, Msg_Video
     CALL PRINT_STRING
 
-    CALL INIT_PATTERN_TABLE
+    CALL INIT_PATTERN_GENERATOR_TABLE
 ;    CALL CHECK_PATTERN
 
     LD HL, CR_LF
@@ -34,11 +34,29 @@ START:
 ;    CALL Delay
 ;    DJNZ status_loop
 
-    CALL INIT_VRAM
+    CALL INIT_PATTERN_LAYOUT_TABLE
+    CALL INIT_COLOR_MAP
     CALL WRITE_RAM
 ;    CALL READ_RAM
+    CALL SET_BLINK
 
+    LD B, 0
+.colorLoop:
+    CALL RECEIVE_CHAR_A
+    CP 'q'
+    JP Z, .endLoop
 
+    LD      C, 7
+    LD      A, 0xF0         ; Text color: white (F) on blue (4)
+    OR B
+    CALL    WRITE_REG
+    INC B
+    LD A, B
+    AND 0x0F
+    LD B, A
+    JP .colorLoop
+
+.endLoop:
 
     RET                     ; or HALT
 
@@ -134,44 +152,52 @@ READ_STATUS:
 
 
 VDP_INIT:
-    LD C, 0
-    LD A, 0x00
+    LD C, 0 ; R#0: Mode set register
+    LD A, 0x04 ;
     CALL WRITE_REG
 
     LD C, 1
-    LD A, 0x50 ; BL:screen enabled, M1: Mode Text 1
+    LD A, 0x50 ; BL:screen enabled, M1: Mode Text 1 or 2
+    CALL WRITE_REG
+
+    LD C, 8
+    LD A, 0x0A ; VR: VRAM 64k*4b - sprite disabled
+    CALL WRITE_REG
+
+    LD C, 9
+    LD A, 0x82 ; LN bit set (8x) - RGB output : NTSC x0, PAL x2
     CALL WRITE_REG
 
     LD      C, 2
-    LD      A, 0x00         ; Pattern Name Table at 0x0000
-    CALL    WRITE_REG
-        
-    LD      C, 4
-    LD      A, 0x01         ; Pattern Generator at 0x0800
+    LD      A, 0x03         ; Pattern Name Table at 0x0000
     CALL    WRITE_REG
 
-    CALL DEFINE_PALETTE
+    LD      C, 3
+    LD      A, 0x2F         ; Color Table at 0x0000
+    CALL    WRITE_REG
+    LD      C, 10
+    LD      A, 0x00         ; Color Table at 0x0000
+    CALL    WRITE_REG
+
+    LD      C, 4
+    LD      A, 0x02         ; Pattern Generator at 0x0800
+    CALL    WRITE_REG
+
+    CALL INIT_PALETTE
 
     LD      C, 7
     LD      A, 0xF4         ; Text color: white (F) on blue (4)
     CALL    WRITE_REG
 
-    LD C, 8
-    LD A, 0x08 ; VR: VRAM 64k*4b
-    CALL WRITE_REG
-
-    LD C, 9
-    LD A, 0x00 ; RGB output : NTSC 00, PAL 02
-    CALL WRITE_REG
 
     ; R#12: Text blink rate and color (often needed)
     LD C, 12
-    LD A, 0x00
+    LD A, 0x4F
     CALL WRITE_REG
 
     ; R#13: Blink period
     LD C, 13  
-    LD A, 0x00
+    LD A, 0x23
     CALL WRITE_REG
 
     ; R#19: Interrupt line position (set to avoid issues)
@@ -185,23 +211,28 @@ VDP_INIT:
 
     RET
 
-DEFINE_PALETTE:
-    ; BLue in 4
+INIT_PALETTE:
+    PUSH AF
+    PUSH BC
+    PUSH HL
+
+    LD HL, COLOR_PALETTE
+    LD B, 16 ; 16 colors
+.paletteLoop:
     LD C, 16
-    LD A, 0x04 ; palette idx 4
+    LD A, (HL) ; palette idx 4
     CALL WRITE_REG
-    LD A, 0x07
+    INC HL
+    LD A, (HL)
     OUT (VDP_PAL_REG), A
-    LD A, 0x00
+    INC HL
+    LD A, (HL)
     OUT (VDP_PAL_REG), A
-    ; White in F
-    LD C, 16
-    LD A, 0x0F ; palette idx 15
-    CALL WRITE_REG
-    LD A, 0x57
-    OUT (VDP_PAL_REG), A
-    LD A, 0x07
-    OUT (VDP_PAL_REG), A
+    INC HL
+    DJNZ .paletteLoop
+    POP HL
+    POP BC
+    POP AF
     RET
 
 WRITE_REG: ; REG number in C, Value in A
@@ -225,7 +256,7 @@ WRITE_REG_INDIRECT: ; REG number in A (add +128 for no auto increment), Values i
     OTIR
     RET
 
-INIT_VRAM: ; write at adress 0x0000
+INIT_PATTERN_LAYOUT_TABLE: ; write at adress 0x0000
     PUSH AF
     PUSH BC
     PUSH HL
@@ -237,7 +268,7 @@ INIT_VRAM: ; write at adress 0x0000
     LD A, 0x00 | 0x40 ; Set Address A13..A8 + data write mode
     OUT (VRAM_ADDR), A
 
-    LD HL, 0x03C0
+    LD HL, 0x0B0D ; number of bytes to write (0x0B0D = 2821 bytes)
 .loop:
     LD A, 0x20 ; value to write to initialize VRAM
     OUT (VRAM_DATA), A
@@ -257,7 +288,7 @@ INIT_VRAM: ; write at adress 0x0000
     POP AF
     RET
 
-INIT_PATTERN_TABLE:
+INIT_COLOR_MAP: ; write at adress 0x0000
     PUSH AF
     PUSH BC
     PUSH HL
@@ -266,7 +297,55 @@ INIT_PATTERN_TABLE:
     CALL WRITE_REG
     LD A, 0x00 ; Set Address A7..A0
     OUT (VRAM_ADDR), A
-    LD A, 0x08 | 0x40 ; Set Address A13..A8 (A11=1) + data write mode
+    LD A, 0x0A | 0x40 ; Set Address A13..A8 + data write mode
+    OUT (VRAM_ADDR), A
+
+    LD HL, 0x0150 ; number of bytes to write (0x0150 = 336 bytes)
+.loop:
+    LD A, 0x00 ; value to write to initialize COLOR MAP
+    OUT (VRAM_DATA), A
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    DEC HL
+    LD A, H
+    OR L
+    JP NZ, .loop
+.loopEnd:
+    POP HL
+    POP BC
+    POP AF
+    RET
+
+SET_BLINK:
+    PUSH AF
+    PUSH BC
+    LD C, 14
+    LD A, 0x00 ; Set Address A16-A15-A14
+    CALL WRITE_REG
+    LD A, 0x00 + 0x14 ; Set Address A7..A0
+    OUT (VRAM_ADDR), A
+    LD A, 0x0A | 0x40 ; Set Address A13..A8 + data write mode
+    OUT (VRAM_ADDR), A
+    LD A, 0xAA ; blink state of the 8 chars at this address
+    OUT (VRAM_DATA), A
+    POP BC
+    POP AF
+    RET
+
+INIT_PATTERN_GENERATOR_TABLE:
+    PUSH AF
+    PUSH BC
+    PUSH HL
+    LD C, 14
+    LD A, 0x00 ; Set Address A16-A15-A14
+    CALL WRITE_REG
+    LD A, 0x00 ; Set Address A7..A0
+    OUT (VRAM_ADDR), A
+    LD A, 0x10 | 0x40 ; Set Address A13..A8 (A12=1) + data write mode
     OUT (VRAM_ADDR), A
 
     LD HL, Pattern_Generator_Table
@@ -427,6 +506,25 @@ CHECK_PATTERN:
     POP BC
     POP AF
     RET
+
+COLOR_PALETTE:
+    DB 0x00, 0x00, 0x00 ; Color 0: Transparent
+    DB 0x01, 0x00, 0x00 ; Color 1: Black
+    DB 0x02, 0x11, 0x06 ; Color 2: Green
+    DB 0x03, 0x33, 0x07 ; Color 3: Light Green
+    DB 0x04, 0x17, 0x01 ; Color 4: Dark Blue
+    DB 0x05, 0x27, 0x03 ; Color 5: Light Blue   
+    DB 0x06, 0x51, 0x01 ; Color 6: Dark Red
+    DB 0x07, 0x27, 0x06 ; Color 7: Cyan
+    DB 0x08, 0x71, 0x01 ; Color 8: Red
+    DB 0x09, 0x73, 0x03 ; Color 9: Light Red
+    DB 0x0A, 0x61, 0x06 ; Color 10: Dark Yellow
+    DB 0x0B, 0x70, 0x03 ; Color 11: Orange
+;    DB 0x0B, 0x64, 0x06 ; Color 11: Light Yellow
+    DB 0x0C, 0x11, 0x04 ; Color 12: Dark Green
+    DB 0x0D, 0x65, 0x02 ; Color 13: Magenta
+    DB 0x0E, 0x55, 0x05 ; Color 14: Grey
+    DB 0x0F, 0x77, 0x07 ; Color 15: White
 
 CR_LF:
     DB 0x0A, 0x0D, 0x00 ; Carriage return + line feed
