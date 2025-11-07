@@ -209,7 +209,7 @@ ReceiveCharNB_A:     ; Get a character from Port A NON BLOCKING (stored in A _ 0
     LD A, 0x00            ; No character received
     RET
 .ReceiveChar_A:
-    IN A, (SIO_DATA_A)         ; Lire caract�re
+    IN A, (SIO_DATA_A)         ; Read character
     RET
 
 ReceiveChar_B:     ; Wait for a character on Port B to be received (stored in A) Blocking
@@ -219,7 +219,7 @@ ReceiveChar_B:     ; Wait for a character on Port B to be received (stored in A)
     BIT 0, A             ; RX char available ?
     JP Z, ReceiveChar_B
 
-    IN A, (SIO_DATA_B)         ; Lire caract�re
+    IN A, (SIO_DATA_B)         ; Read character
     RET
 
     ENDIF
