@@ -130,16 +130,24 @@ Keypad_Scan2: ; Scan the keypad columns
     LD A, (DE)
     OR A ; check if the state is already set
     ;The button was not already pressed
-    CALL Z, OnKeyPressed
-    LD A, 0x01 ; set the key as pressed
+    JP NZ, .continue
+    CALL OnKeyPressed
+    LD A, 0x40 ; set the key as pressed; debounce counter
     LD (DE), A
-    JP .continue
+    POP AF ; the jump to exit skip the pop AF after continue so we put it here
+    JP .exit ; early exit at the the first not processed click so as the 
+    ; the keypadScan only call onKeyPressed once (to be compatible with getc)
+
 .notPressed:
     LD A, (DE) 
     OR A; check if the key was released
-    CALL NZ, OnKeyReleased
-    LD A, 0x00 ; Load the current row data
-    LD (DE), A ; Clear the current row data
+    JP Z, .continue 
+    CP 0x01
+    CALL Z, OnKeyReleased
+    LD A, (DE)
+    DEC A ; decrement the debounce counter
+    LD (DE), A
+
 .continue:
     POP AF
     SRL A ; Shift right to check next bit
@@ -151,6 +159,7 @@ Keypad_Scan2: ; Scan the keypad columns
     LD A, C
     CP KEYPAD_IO_ADDRESS + KEYPAD_COLUMNS +1 ; Check if we have scanned all columns 
     JP NZ, .colLoop ; If not, continue scanning
+.exit:
     POP IX
     POP DE
     POP BC
@@ -176,7 +185,7 @@ DECODE_MATRIX2: ; organised by columns
     DB 'D', '7', '4', '1', '0'
     DB '/', '8', '5', '2', 0x00
     DB '*', '9', '6', '3', '.'
-    DB 'a', 'b', 'c', 'd', 'e'
+    DB '-', '+', 0x00, 'e', 0x00
 
 
 ; KEYPAD_STATE:

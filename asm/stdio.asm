@@ -1,0 +1,89 @@
+
+    IFNDEF __STDIO__
+    DEFINE __STDIO__
+STREAM_OUT_SERIAL EQU 0x01
+STREAM_OUT_VIDEO EQU 0x02
+STREAM_OUT_PRINTER EQU 0x04
+STREAM_IN_SERIAL EQU 0x10
+STREAM_IN_KEYBOARD EQU 0x20
+
+;VRAM_DATA EQU   0x40            ; PORT #0 - VRAM data port
+
+    include "serial.asm"
+
+PUTC: ; Output character in A to standard output
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_SERIAL
+    CALL NZ, SIO_PUTC
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_VIDEO
+    CALL NZ, VIDEO_PUTC
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_PRINTER
+    CALL NZ, PRINTER_PUTC
+    RET
+
+PUTS: ; Output string (0x00 terminated) at (HL) to standard output
+    PUSH AF
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_SERIAL
+    CALL NZ, SIO_PUTS
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_VIDEO
+    CALL NZ, VIDEO_PUTS
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_PRINTER
+    CALL NZ, PRINTER_PUTS
+    POP AF
+    RET
+
+GETC: ; Input in A from standard input
+    LD A, (STREAM_SELECT)
+    AND STREAM_IN_SERIAL
+    CALL NZ, SIO_GETC
+    JR C, .GetC_Done
+    LD A, (STREAM_SELECT)
+    AND STREAM_IN_KEYBOARD
+    CALL NZ, KBD_GETC
+.GetC_Done:
+    RET
+
+SIO_PUTC:
+    CALL SendChar_A
+    RET
+
+VIDEO_PUTC:
+    OUT (VRAM_DATA), A
+    RET
+
+PRINTER_PUTC:
+    RET
+
+SIO_PUTS:
+    CALL PrintString
+    RET
+
+VIDEO_PUTS:
+    PUSH AF
+    LD A, (HL)
+    CP 0x00
+    JP Z, .exit
+    OUT (VRAM_DATA), A
+    JP VIDEO_PUTS
+.exit:
+    POP AF
+    RET
+
+PRINTER_PUTS:
+    RET
+
+SIO_GETC:
+    RET
+
+KBD_GETC:
+    RET
+
+
+STREAM_SELECT: ; bit 0 is serial, bit 1 is video, bit 2 is printer
+    DB 0x00
+    ENDIF

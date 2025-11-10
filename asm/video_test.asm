@@ -27,16 +27,23 @@ PATTERN_LAYOUT_TABLE_ADDR EQU 0x0000 ; Base address of pattern name table in VRA
 
     include "serial.asm"
     include "keypad.asm"
+    include "stdio.asm"
 
 
 CURSOR_IDX:
-    DW 5*80+40 ; row 5, col 43
+    DW 0 ; row 0, col 0
 
 START:
-    LD D, 'X' ; character to write
+;    LD D, 'X' ; character to write
     CALL INIT_PATTERN_LAYOUT_TABLE
     CALL INIT_COLOR_TABLE
-    CALL WRITE_RAM
+    LD A, 0x03
+    LD (STREAM_SELECT), A
+    LD HL, 0x0060
+    CALL SET_VRAM_ADDR
+    LD HL, TestMsg
+    CALL PUTS  ; ##### SOMETHING TO FIX HERE 
+;    CALL WRITE_RAM
     LD C, 0x01
     CALL SET_BLINK
 
@@ -50,11 +57,11 @@ START:
     CP 0x00
     JP Z, .eventLoop ; No key pressed, continue loop
 
-    CALL HEX2STR
-    PUSH AF
-    LD A, ' '
-    CALL SENDCHAR_A
-    POP AF
+    ; CALL HEX2STR
+    ; PUSH AF
+    ; LD A, ' '
+    ; CALL SENDCHAR_A
+    ; POP AF
 
     CP '0'
     JP Z, .endLoop
@@ -106,7 +113,7 @@ START:
 .beginningOfScreen:
     LD DE, HL
     LD HL, (CURSOR_IDX)
-    OR A ; clear carry
+    OR A ; clear carryBonjour
     SBC HL, DE
     LD (CURSOR_IDX), HL
     POP HL
@@ -116,8 +123,6 @@ START:
     JP .eventLoop
 
 .backSpace:
-    ; LD D, ' '
-    ; CALL WRITE_RAM
     LD C, 0x00
     CALL SET_BLINK ; unset blink at current position
     LD HL, (CURSOR_IDX)
@@ -399,12 +404,20 @@ DISPLAY_KEYPAD_STATE:
     POP AF
     RET
 
+
+
 OnKeyPressed:
     PUSH AF
     PUSH BC
     PUSH DE
     PUSH HL
-    
+
+    LD HL, PressedMsg
+    CALL PRINT_STRING
+    CALL SendChar_IX
+    LD HL, CR_LF
+    CALL PRINT_STRING
+
     LD A, (IX)
     CP '4'
     CALL Z, GO_LEFT
@@ -505,14 +518,14 @@ GO_DOWN:
     CALL SET_BLINK ; set blink at new position
     RET
 
-
-
 OnKeyReleased:
-    ; LD HL, ReleasedMsg
-    ; CALL PRINT_STRING
-    ; CALL SendChar_IX
-    ; LD HL, CR_LF
-    ; CALL PRINT_STRING
+    PUSH HL
+    LD HL, ReleasedMsg
+    CALL PRINT_STRING
+    CALL SendChar_IX
+    LD HL, CR_LF
+    CALL PRINT_STRING
+    POP HL
     RET
 
 CR_LF:
@@ -522,4 +535,8 @@ PressedMsg:
     DB 'Key Pressed : ', 0x00
 ReleasedMsg:
     DB 'Key Released : ', 0x00
+TestMsg:
+    DB "This is a test message !!", 0x00
+
+
     END
