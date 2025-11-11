@@ -10,17 +10,17 @@ KEYPAD_STATE EQU RAM_START + 0x0110 ; Keypad state - ROWs * COLS bytes
 
         ORG     0x5000          ; Start address
 
-; V9938 Port definitions
-VRAM_DATA EQU   0x40            ; PORT #0 - VRAM data port
-VRAM_ADDR EQU   0x41            ; PORT #1 - VRAM Address 
-VDP_STAT_REG EQU   0x41            ; PORT #1 - Status Register 
-VDP_REG_SETUP EQU   0x41            ; PORT #1 - Register Setup
+; ; V9938 Port definitions
+; VRAM_DATA EQU   0x40            ; PORT #0 - VRAM data port
+; VRAM_ADDR EQU   0x41            ; PORT #1 - VRAM Address 
+; VDP_STAT_REG EQU   0x41            ; PORT #1 - Status Register 
+; VDP_REG_SETUP EQU   0x41            ; PORT #1 - Register Setup
 
-VDP_PAL_REG   EQU   0x42            ; PORT #2 - Palette Register port (MODE1)
-VDP_REG_INDIR EQU   0x43            ; PORT #3 - Register Indirect Addressing 
+; VDP_PAL_REG   EQU   0x42            ; PORT #2 - Palette Register port (MODE1)
+; VDP_REG_INDIR EQU   0x43            ; PORT #3 - Register Indirect Addressing 
 
-COLOR_MAP_BASE_ADDR EQU 0x0A00 ; Base address of color table in VRAM
-PATTERN_LAYOUT_TABLE_ADDR EQU 0x0000 ; Base address of pattern name table in VRAM
+; COLOR_MAP_BASE_ADDR EQU 0x0A00 ; Base address of color table in VRAM
+; PATTERN_LAYOUT_TABLE_ADDR EQU 0x0000 ; Base address of pattern name table in VRAM
   include "jumpTable.inc"
 
     JP START
@@ -28,26 +28,68 @@ PATTERN_LAYOUT_TABLE_ADDR EQU 0x0000 ; Base address of pattern name table in VRA
     include "serial.asm"
     include "keypad.asm"
     include "stdio.asm"
+    include "vdp_core.asm"
 
 
 CURSOR_IDX:
     DW 0 ; row 0, col 0
 
 START:
+
+    LD HL, CR_LF
+    CALL PRINT_STRING
+    LD HL, TestMsg
+    CALL PRINT_STRING
+    LD HL, CR_LF
+    CALL PRINT_STRING
+    LD HL, CR_LF
+    CALL PRINT_STRING
+
+
 ;    LD D, 'X' ; character to write
     CALL INIT_PATTERN_LAYOUT_TABLE
     CALL INIT_COLOR_TABLE
-    LD A, 0x03
+
+    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL
     LD (STREAM_SELECT), A
-    LD HL, 0x0060
-    CALL SET_VRAM_ADDR
-    LD HL, TestMsg
-    CALL PUTS  ; ##### SOMETHING TO FIX HERE 
-;    CALL WRITE_RAM
+
+    ; LD HL, 0x0060
+    ; CALL SET_VRAM_ADDR
+
+    LD HL, 320
+    LD DE, MeasureMsg
+; .stringLoop:
+;     LD A, (DE)
+;     OR A
+;     JP Z, .stringLoopEnd
+;     CALL PUTC
+;     INC DE
+;     JP .stringLoop
+; .stringLoopEnd:
+    CALL PUTS
+
+    PUSH HL
+    LD HL, CR_LF
+    CALL PRINT_STRING
+    POP HL
+
+    LD HL, 400
+    LD DE, TestMsg
+; .stringLoop1:
+;     LD A, (DE)
+;     OR A
+;     JP Z, .stringLoopEnd1
+;     CALL PUTC
+;     INC DE
+;     JP .stringLoop1
+; .stringLoopEnd1:
+    CALL PUTS
+
+    LD B, 0
+    LD HL, (CURSOR_IDX) ; put the cursor at 0
     LD C, 0x01
     CALL SET_BLINK
 
-    LD B, 0
 .eventLoop:
 ;    CALL DISPLAY_KEYPAD_STATE
 ;    CALL DISPLAY_KEYPAD_BUFFER
@@ -56,12 +98,6 @@ START:
 
     CP 0x00
     JP Z, .eventLoop ; No key pressed, continue loop
-
-    ; CALL HEX2STR
-    ; PUSH AF
-    ; LD A, ' '
-    ; CALL SENDCHAR_A
-    ; POP AF
 
     CP '0'
     JP Z, .endLoop
@@ -79,57 +115,43 @@ START:
     JP Z, .screenHorizontal
     CP '5'
     JP Z, .rotateColor
-    CP 0x0D ; Enter key
+    CP 0x0D      ; Enter key
     JP Z, .enterKey
-    CP 0x08 ; Backspace key
+    CP 0x08      ; Backspace key
     JP Z, .backSpace
 
-
-    LD D, A
-    CALL WRITE_RAM
+    LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL SET_BLINK ; unset blink at current position
-    LD HL, (CURSOR_IDX)
-    INC HL
+    CALL PUTC
     LD (CURSOR_IDX), HL
     LD C, 0x01
     CALL SET_BLINK ; set blink at new position
     JP .eventLoop
-        LD C, 0x00
-    CALL SET_BLINK ; unset blink at current position
+
 
 .enterKey:
+    LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL SET_BLINK ; unset blink at current position
-; Compute the index of the beginning of the next line
-    PUSH HL
-    OR A ; clear carry
-    LD DE, 80
-    LD HL, (CURSOR_IDX)
-.numberOfRowsLoop:
-    SBC HL, DE
-    JP M, .beginningOfScreen ; if negative, we are at the beginning of the screen
-    JP .numberOfRowsLoop
-.beginningOfScreen:
-    LD DE, HL
-    LD HL, (CURSOR_IDX)
-    OR A ; clear carryBonjour
-    SBC HL, DE
+    LD A, 0x0A
+    CALL PUTC
+    LD A, 0x0D
+    CALL PUTC
     LD (CURSOR_IDX), HL
-    POP HL
-
     LD C, 0x01
     CALL SET_BLINK ; set blink at new position
     JP .eventLoop
 
 .backSpace:
     LD C, 0x00
-    CALL SET_BLINK ; unset blink at current position
     LD HL, (CURSOR_IDX)
-    DEC HL
+    CALL SET_BLINK ; unset blink at current position
+;    DEC HL
+;    LD (CURSOR_IDX), HL
+    LD A, 0x08
+    CALL PUTC
     LD (CURSOR_IDX), HL
-    LD D, ' '
-    CALL WRITE_RAM
     LD C, 0x01
     CALL SET_BLINK ; set blink at new position
     JP .eventLoop
@@ -191,46 +213,17 @@ START:
     CALL PRINT_STRING
     RET                     ; or HALT
 
-; Delay:
-;     PUSH BC
-;     LD B, 255
-; .loop:
-;     NOP
-;     NOP
-;     DJNZ .loop
-;     POP BC
-;     RET
 
 SCREEN_OFFSET:
     DB 0x00
 
-WRITE_REG: ; REG number in C, Value in A
-    PUSH AF
-    ;PUSH BC
-    ;DI
-    OUT (VDP_REG_SETUP), A
-    LD A, C
-    OR 0x80
-    ;EI
-    OUT (VDP_REG_SETUP), A
-    ;POP BC
-    POP AF
-    RET
-
-WRITE_REG_INDIRECT: ; REG number in A (add +128 for no auto increment), Values in (HL), number of values in B
-    LD C, 17 ; 17: indirect register number
-    CALL WRITE_REG
-
-    LD C, VDP_REG_INDIR        ; you can also write ld bc,#nn9B, which is faster
-    OTIR
-    RET
 
 INIT_PATTERN_LAYOUT_TABLE: ; write at adress 0x0000
     PUSH AF
     PUSH BC
     PUSH HL
 
-    LD HL, PATTERN_LAYOUT_TABLE_ADDR
+    LD HL, PATTERN_LAYOUT_TABLE_BASE_ADDR
     CALL SET_VRAM_ADDR
 
     LD HL, 80*27 ; number of bytes to write (0x0B0D = 2821 bytes)
@@ -257,7 +250,7 @@ INIT_COLOR_TABLE: ; write at adress 0x0000
     PUSH AF
     PUSH BC
     PUSH HL
-    LD HL, COLOR_MAP_BASE_ADDR
+    LD HL, COLOR_TABLE_BASE_ADDR
     CALL SET_VRAM_ADDR
 
     LD HL, 270 ; number of bytes to write (0x0B0D = 2821 bytes)
@@ -280,132 +273,7 @@ INIT_COLOR_TABLE: ; write at adress 0x0000
     POP AF
     RET
 
-SET_VRAM_ADDR: ; Set VRAM address from HL
-    PUSH AF
-    PUSH BC
-    PUSH HL
-    LD A, H
-    RLCA
-    RLCA
-    AND 0x03 ; keep only A14 et A15 in the 2 rightmost positions
-
-    LD C, 14
-;    LD A, 0x00 ; Set Address A16-A15-A14
-    CALL WRITE_REG
-    LD A, L
-;    LD A, 0x00 ; Set Address A7..A0
-
-    OUT (VRAM_ADDR), A
-
-    LD A, H
-    AND 0x3F ; keep only A13..A8
-    OR 0x40 ; data write mode
-    OUT (VRAM_ADDR), A
-    POP HL
-    POP BC
-    POP AF
-    RET
-
-SET_BLINK: ; set or unset blink at address (CURSOR_IDX) based on C value (0: unset, 1: set)
-    PUSH AF
-    PUSH BC
-    PUSH DE
-    PUSH HL
-
-    LD HL, (CURSOR_IDX)
-    LD A, L
-    AND 0x07 ; get the 3 lowest bits to shift the blink to the right position
-    ADD A, 1; make sure there is only one shift when offset is 0
-    LD B, A ; save shift count in B
-
-    SRL H ; divide HL by 8 to get the index 
-    RR L  ; in the color table of the byte 
-    SRL H ; containing the char to blink
-    RR L
-    SRL H
-    RR L 
-
-    LD DE, COLOR_MAP_BASE_ADDR
-    ADD HL, DE ; compute the address in VRAM of the color byte
-    CALL SET_VRAM_ADDR
-
-    LD A, C
-.shift_loop:  ; Shift the blink  to the right position
-    RRCA
-    DJNZ .shift_loop
-    OUT (VRAM_DATA), A
-
-    POP HL
-    POP DE
-    POP BC
-    POP AF
-    RET
-
-
-WRITE_RAM: ; write at adress (CURSOR_IDX) the character in reg D
-    PUSH AF
-    ; PUSH BC
-    PUSH HL
-
-    LD HL, (CURSOR_IDX)
-    CALL SET_VRAM_ADDR
-    LD A, D ; value to write to VRAM
-    OUT (VRAM_DATA), A
-
-    POP HL
-    ; POP BC
-    POP AF
-    RET
     
-DISPLAY_KEYPAD_BUFFER:
-    PUSH AF
-    PUSH BC
-    PUSH HL
-
-    LD HL, 0x0000
-    CALL SET_VRAM_ADDR
-
-    LD HL, KEYPAD_BUFFER
-    LD B, 4 
-.display_loop:
-    LD A, (HL)
-    OUT (VRAM_DATA), A
-    INC HL
-    DJNZ .display_loop
-
-    POP HL
-    POP BC
-    POP AF
-    RET
-
-DISPLAY_KEYPAD_STATE:
-    PUSH AF
-    PUSH BC
-    PUSH HL
-    LD HL, 160
-    CALL SET_VRAM_ADDR
-    LD HL, KEYPAD_STATE
-    LD B, KEYPAD_COLUMNS * KEYPAD_ROWS 
-.display_loop:
-    LD A, (HL)
-    CP 0x01
-    JR Z, .printPressed
-    LD A, '.' ; not pressed
-    JR .displayChar
-.printPressed:
-    LD A, '#' ; pressed
-.displayChar:
-    OUT (VRAM_DATA), A
-    INC HL
-    DJNZ .display_loop
-
-    POP HL
-    POP BC
-    POP AF
-    RET
-
-
-
 OnKeyPressed:
     PUSH AF
     PUSH BC
@@ -435,55 +303,62 @@ OnKeyPressed:
     RET
 
 GO_LEFT:
+    PUSH AF
+    PUSH BC
+    PUSH HL
     LD HL, (CURSOR_IDX) ; check if possible to move left
     LD A, H
     OR L
-    RET Z ; if at left edge, do nothing
+    JP Z, .leftExit ; if at left edge, do nothing
 
-    ; LD D, ' '
-    ; CALL WRITE_RAM
     LD C, 0x00
     CALL SET_BLINK ; unset blink before moving
     LD HL, (CURSOR_IDX)
     DEC HL
     LD (CURSOR_IDX), HL
-    ; LD D, 'X'
-    ; CALL WRITE_RAM
+
     LD C, 0x01
     CALL SET_BLINK ; set blink at new position
+.leftExit:
+    POP HL
+    POP BC
+    POP AF
     RET
     
 GO_RIGHT:
+    PUSH DE
+    PUSH HL
     LD DE, (CURSOR_IDX) ; check if possible to move right
     LD HL, 80*26-1
     OR A
     SBC HL, DE
     LD A, H
     OR L
-    RET Z ; if at left edge, do nothing
-
-    ; LD D, ' '
-    ; CALL WRITE_RAM
+    JP Z, .rightExit ; if at bottom right edge, do nothing
+    LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL SET_BLINK ; unset blink before moving
     LD HL, (CURSOR_IDX)
     INC HL
     LD (CURSOR_IDX), HL
-    ; LD D, 'X'
-    ; CALL WRITE_RAM
     LD C, 0x01
     CALL SET_BLINK ; set blink at new position
+.rightExit:
+    POP HL
+    POP DE
     RET
 
 GO_UP:
-    LD HL, (CURSOR_IDX) ; check if possible to move right
+    PUSH AF
+    PUSH BC
+    PUSH DE
+    PUSH HL
+    LD HL, (CURSOR_IDX) ; check if possible to move up
     LD DE, 80
     OR A
     SBC HL, DE
-    RET M ; if at left edge, do nothing
-
-    ; LD D, ' '
-    ; CALL WRITE_RAM
+    JP M, .upExit ; if at top edge, do nothing
+    LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL SET_BLINK ; unset blink before moving
     LD HL, (CURSOR_IDX)
@@ -491,31 +366,39 @@ GO_UP:
     OR A ; clear carry
     SBC HL, DE
     LD (CURSOR_IDX), HL
-    ; LD D, 'X'
-    ; CALL WRITE_RAM
     LD C, 0x01
     CALL SET_BLINK ; set blink at new position
+.upExit:
+    POP HL
+    POP DE
+    POP BC
+    POP AF
     RET
 
 GO_DOWN:
+    PUSH AF
+    PUSH BC
+    PUSH DE
+    PUSH HL
     LD DE, (CURSOR_IDX) ; check if possible to move right
     LD HL, 80*25-1
     OR A
     SBC HL, DE
-    RET M ; if at left edge, do nothing
-
-    ; LD D, ' '
-    ; CALL WRITE_RAM
+    JP M, .downExit ; if at left edge, do nothing
+    LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL SET_BLINK ; unset blink before moving
     LD HL, (CURSOR_IDX)
     LD DE, 80 ; move down one row
     ADD HL, DE
     LD (CURSOR_IDX), HL
-    ; LD D, 'X'
-    ; CALL WRITE_RAM
     LD C, 0x01
     CALL SET_BLINK ; set blink at new position
+.downExit:
+    POP HL
+    POP DE
+    POP BC
+    POP AF
     RET
 
 OnKeyReleased:
@@ -536,7 +419,8 @@ PressedMsg:
 ReleasedMsg:
     DB 'Key Released : ', 0x00
 TestMsg:
-    DB "This is a test message !!", 0x00
-
+    DB "This.", 0x09,"is.a.te", 0x08, "st mess", 0x09, "age.!!", 0x0D,  "Prout prout !", 0x00,0x0A
+MeasureMsg:
+    DB "01234567012345670123456701234567012345670123456701234567", 0x00
 
     END

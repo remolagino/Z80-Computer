@@ -59,7 +59,10 @@ def cat(dir, arg):
             ser.write(data[i:i+chunk_size])
 
 def run(dir,arg):
+    if not arg.endswith(".bin"):
+        arg=arg+".bin"
     file= Path(dir, arg)
+
     if not file.is_file():
         send_Nack()
         send_line(f"{arg} n'est pas un fichier")
