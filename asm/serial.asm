@@ -126,6 +126,7 @@ InitSerial_B: ; initialisation of SIO Channel B
 ; ------------------------------------------------------------
 
 PrintString: ; Print a message (0 terminated string, address in HL)
+    PUSH AF
     PUSH HL
 .loop:
     LD A, (HL)
@@ -136,6 +137,7 @@ PrintString: ; Print a message (0 terminated string, address in HL)
     JP .loop ; Continue printing the string
 .end:
     POP HL
+    POP AF
     RET
 
 

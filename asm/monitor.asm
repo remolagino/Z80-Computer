@@ -106,6 +106,7 @@ ReadLine:
 ; -------------- Keyboard Processing ----------------
     PUSH BC, DE, HL, IX
     CALL Keypad_Scan
+
     LD A, (KEYPAD_BUFFER) ; Read the first character from the keypad buffer
     LD HL, KEYPAD_BUFFER
     LD (HL), 0x00 ; Clear the buffer
@@ -923,6 +924,8 @@ GetBaseAddress_IY: ; return the return address of the CALL in IY
     JP Keypad_Scan
     JP Hex2BCD
 
+OnKeyPressed:
+OnKeyReleased:
 ;  -------------------------------------------
 ; Fin du programme
     DS 0x4000 - $    ; pad to 16kB
