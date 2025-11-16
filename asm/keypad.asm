@@ -10,8 +10,10 @@ KEYPAD_IO_ADDRESS EQU 0x60 ; Keypad Columns address
 KEYPAD_COLUMNS EQU 0x03 ; number of columns
 KEYPAD_ROWS EQU 0x05 ; number of rows
 KEYPAD_MODIFIERS EQU 0x03 ; modifiers column
-KEYPAD_BUFFER_LENGTH EQU 0x04 ; buffer length for keys
 
+KEYPAD_BUFFER_SIZE EQU 0x09 ; buffer length for keys
+
+    include "memoryMap.inc"
 
 
 Keypad_Scan: ; Scan the keypad columns
@@ -109,62 +111,6 @@ Keypad_Scan: ; Scan the keypad columns
     JP NZ, .colLoop ; If not, continue scanning
     RET
 
-Keypad_Scan2: ; Scan the keypad columns
-    PUSH AF
-    PUSH BC
-    PUSH DE
-    PUSH IX
-    LD C, KEYPAD_IO_ADDRESS
-    LD IX, DECODE_MATRIX2 ; Pointer to rows data
-    LD DE, KEYPAD_STATE
-    LD HL, KEYPAD_BUFFER ; Pointer to the buffer for keys 
-.colLoop:
-    IN A, (C)
-    LD B, KEYPAD_ROWS ; Number of bits to scan (5 bits per column)
-.rowLoop:
-    PUSH AF
-    BIT 0, A ; Check if the bit is Set
-    JP Z, .notPressed ; If not pressed, skip to next bit
-    ;The button is pressed
-.Pressed:
-    LD A, (DE)
-    OR A ; check if the state is already set
-    ;The button was not already pressed
-    JP NZ, .continue
-    CALL OnKeyPressed
-    LD A, 0x40 ; set the key as pressed; debounce counter
-    LD (DE), A
-    POP AF ; the jump to exit skip the pop AF after continue so we put it here
-    JP .exit ; early exit at the the first not processed click so as the 
-    ; the keypadScan only call onKeyPressed once (to be compatible with getc)
-
-.notPressed:
-    LD A, (DE) 
-    OR A; check if the key was released
-    JP Z, .continue 
-    CP 0x01
-    CALL Z, OnKeyReleased
-    LD A, (DE)
-    DEC A ; decrement the debounce counter
-    LD (DE), A
-
-.continue:
-    POP AF
-    SRL A ; Shift right to check next bit
-    INC IX ; Move to next row data
-    INC DE
-
-    DJNZ .rowLoop ; Loop for all bits in the column
-    INC C
-    LD A, C
-    CP KEYPAD_IO_ADDRESS + KEYPAD_COLUMNS +1 ; Check if we have scanned all columns 
-    JP NZ, .colLoop ; If not, continue scanning
-.exit:
-    POP IX
-    POP DE
-    POP BC
-    POP AF
-    RET
 
 
 DECODE_MATRIX: ; organised by columns
@@ -181,11 +127,6 @@ DECODE_MATRIX: ; organised by columns
     DB 'U', 'V', 'W', 'X', 'Y'
     DB 'Z', '$', '£', 'ù', 'µ', 0x00
 
-DECODE_MATRIX2: ; organised by columns
-    DB 'D', '7', 0x12, '1', '0'
-    DB '/', 0x11, '5', 0x13, 0x00
-    DB '*', '9', 0x14, '3', '.'
-    DB '-', '+', 0x00, 0x0D, 0x00
 
 
     ENDIF ; __KEYPAD__

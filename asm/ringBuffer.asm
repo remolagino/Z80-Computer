@@ -111,6 +111,29 @@ RING_READ: ; put in reg A the first unread elmt in the ring buffer at address HL
     POP DE
     RET
 
+RING_IS_EMPTY: ; set the carry if the ring buffer in HL is empty
+    PUSH DE
+    PUSH HL
+    PUSH IX
+    LD IX, HL
+    ;check if buffer empty
+    LD DE, (IX + RING_BUFFER.TAIL_PTR)
+    LD HL, (IX + RING_BUFFER.HEAD_PTR)
+    OR A
+    SBC HL, DE
+    JP Z, .emptyBuffer
+    OR A
+    POP IX
+    POP HL
+    POP DE
+    RET
+.emptyBuffer:
+    SCF
+    POP IX
+    POP HL
+    POP DE
+    RET
+    
 PREP_BUFFER: ; fill the buffer data with value in reg D
     PUSH AF
     PUSH BC

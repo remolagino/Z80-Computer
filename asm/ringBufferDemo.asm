@@ -35,6 +35,8 @@ START:
     JP Z, .exit
     CP '²'
     JP Z, .readRing
+    CP 0x09
+    JP Z, .bufferStatus
 
     PUSH AF
     PUSH HL
@@ -117,6 +119,21 @@ START:
     CALL PRINT_STRING
     POP HL
 
+    JP .loop
+
+.bufferStatus:
+    CALL RING_IS_EMPTY
+    JP C, .bufferEmpty
+    PUSH HL
+    LD HL, BUFFER_STATUS_NOT_EMPTY_MSG
+    CALL PRINT_STRING
+    POP HL
+    JP .loop
+.bufferEmpty:
+    PUSH HL
+    LD HL, BUFFER_STATUS_EMPTY_MSG
+    CALL PRINT_STRING
+    POP HL
     JP .loop
 .exit:
     RET
@@ -202,5 +219,10 @@ READ_BUFFER_MSG:
     DB "Value Read : ", 0x00
 WRITE_BUFFER_MSG:
     DB "Value Written : ", 0x00
+BUFFER_STATUS_EMPTY_MSG:
+    DB "Buffer is empty", 0x0D, 0x0A, 0x00
+BUFFER_STATUS_NOT_EMPTY_MSG:
+    DB "Buffer contains data", 0x0D, 0x0A, 0x00
+
 MY_RX_BUFFER    RING_BUFFER  ; This reserves 6 bytes for the control fields (SIZE, HEAD, TAIL)
 

@@ -18,11 +18,29 @@ CUR_DOWN EQU 0x13
 CUR_RIGHT EQU 0x14
 ESC EQU 0x1B
 
+    MACRO LONG_NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    ENDM
+
 ;VRAM_DATA EQU   0x40            ; PORT #0 - VRAM data port
     include "jumpTable.inc"
-;    include "serial.asm"
+    include "serial.asm"
     include "vdp_core.asm"
-
+    include "keyboard.asm"
 
 PUTC: ; Output character in A to standard output at (HL) to standard output
     PUSH AF
@@ -59,7 +77,8 @@ GETC: ; Input in A from standard input
     LD A, (STREAM_SELECT)
     AND STREAM_IN_SERIAL
     CALL NZ, SIO_GETC
-    JR C, .GetC_Done
+    OR A
+    JR NZ, .GetC_Done ; if char received A is non zero
     LD A, (STREAM_SELECT)
     AND STREAM_IN_KEYBOARD
     CALL NZ, KBD_GETC
@@ -282,21 +301,6 @@ VIDEO_PUTC: ; char to print in B, at (HL)
     POP AF
     RET
 
-
-
-; Print_HL_Hex:
-;     PUSH AF
-;     LD A, "<"
-;     CALL SENDCHAR_A
-;     LD A, H
-;     CALL HEX2STR
-;     LD A, L
-;     CALL HEX2STR
-;     LD A, ">"
-;     CALL SENDCHAR_A
-;     POP AF
-;     RET
-
 PRINTER_PUTC:
     RET
 
@@ -345,15 +349,61 @@ VIDEO_PUTS:
 PRINTER_PUTS:
     RET
 
-SIO_GETC:
+SIO_GETC: ; get a character from serial, 0x00 is empty
+    CALL SendChar_A
+    CALL ReceiveCharNB_A
+    ; transform escaped sequence
+    CP ESC
+    JP Z, .escape
+
+    RET
+.escape:
+;    LONG_NOP
+;    CALL ReceiveCharNB_A
+    CALL ReceiveChar_A
+    CP '['
+    JP Z, .escapedSequence
+    SCF
+    RET
+.escapedSequence:
+;    LONG_NOP
+;    CALL ReceiveCharNB_A
+    CALL ReceiveChar_A
+    CP 'A'
+    JP Z, .up
+    CP 'B'
+    JP Z, .down
+    CP 'C'
+    JP Z, .right
+    CP 'D'
+    JP Z, .left
+    RET
+.up:
+    LD A, CUR_UP
+    RET
+.down:
+    LD A, CUR_DOWN
+    RET
+.right:
+    LD A, CUR_RIGHT
+    RET
+.left:
+    LD A, CUR_LEFT
     RET
 
 KBD_GETC:
+;    LD A, '*'
+;    CALL SendChar_A
+    CALL Keyboard_GetKey
     RET
 
 
 STREAM_SELECT: ; bit 0 is serial, bit 1 is video, bit 2 is printer
     DB 0x00
+
+; KBD_BUFFER RING_BUFFER
+; KBD_BUFFER_DATA:
+;     BLOCK KBD_BUFFER_LENGTH, 0x00
 
 
     ENDIF

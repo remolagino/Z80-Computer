@@ -14,8 +14,7 @@
     include "memoryMap.inc"
     JP START
 
-    include "serial.asm"
-    include "keypad.asm"
+;    include "serial.asm"
     include "stdio.asm"
     include "vdp_core.asm"
 
@@ -27,8 +26,8 @@ START:
 
     LD HL, CR_LF
     CALL PRINT_STRING
-
-    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL
+; STREAM_IN_KEYBOARD|
+    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
     LD (STREAM_SELECT), A
     LD HL, StreamMsg
     CALL PRINT_STRING
@@ -56,13 +55,17 @@ START:
     CALL SET_BLINK
 
 .eventLoop:
-    CALL Keypad_Scan2
-    CALL ReceiveCharNB_A
+    ; CALL Keypad_Scan2
+    ; CALL ReceiveCharNB_A
+
+    CALL GETC
 
     CP 0x00
     JP Z, .eventLoop ; No key pressed, continue loop
 
-    CP '0'
+;    CALL HEX2STR
+
+    CP '²'
     JP Z, .endLoop
     CP '9'
     JP Z, .screenVertical
@@ -138,29 +141,26 @@ START:
     RET                     ; or HALT
 
 
-OnKeyPressed:
-    PUSH AF
-    PUSH BC
-    LD HL, (CURSOR_IDX)
-    LD C, 0x00
-    CALL SET_BLINK ; unset blink before moving
-    LD A, (IX)
-    CP CR
-    JP NZ, .notEnterKey
-    CALL PUTC
-    LD A, LF
-.notEnterKey:
-    CALL PUTC
-    LD (CURSOR_IDX), HL
-    LD C, 0x01
-    CALL SET_BLINK ; unset blink before moving
-.continue:
-    POP BC
-    POP AF
-    RET
-
-OnKeyReleased:
-    RET
+; OnKeyPressed:
+;     PUSH AF
+;     PUSH BC
+;     LD HL, (CURSOR_IDX)
+;     LD C, 0x00
+;     CALL SET_BLINK ; unset blink before moving
+;     LD A, (IX)
+;     CP CR
+;     JP NZ, .notEnterKey
+;     CALL PUTC
+;     LD A, LF
+; .notEnterKey:
+;     CALL PUTC
+;     LD (CURSOR_IDX), HL
+;     LD C, 0x01
+;     CALL SET_BLINK ; unset blink before moving
+; .continue:
+;     POP BC
+;     POP AF
+;     RET
 
 
 INIT_PATTERN_LAYOUT_TABLE: ; write at adress 0x0000
