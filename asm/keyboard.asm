@@ -76,31 +76,39 @@ Keyboard_Scan: ; Scan the keypad columns
     RET
 
 OnKeyPressed:
-    PUSH HL
-    LD HL, KBD_RING_BUFFER
+    PUSH IY
+    LD IY, KBD_RING_BUFFER
     LD A, (IX)
-    CALL RING_WRITE
-    POP HL
+    CALL RING_PUT
+    POP IY
     RET
 
 OnKeyReleased:
     RET
 
 Keyboard_GetKey: ; return char in A, 0x00 if none
-    PUSH HL
-    LD HL, KBD_RING_BUFFER
+    PUSH IY
+    LD IY, KBD_RING_BUFFER
     CALL RING_IS_EMPTY
     CALL C, Keyboard_Scan
-    CALL RING_READ
-    POP HL
+    CALL RING_GET
+    POP IY
     RET 
 
+Keyboard_UngetKey: ; put char in A back in the ring buffer
+    PUSH IY
+    LD IY, KBD_RING_BUFFER
+    CALL RING_UNGET
+    POP IY
+    RET 
+
+TREMA EQU 0xA8
 
 DECODE_MATRIX: ; organised by columns
-    DB 'D', '7', 0x12, '1', '0'
-    DB '/', 0x11, '5', 0x13, 0x00
-    DB '*', '9', 0x14, '3', '.'
-    DB '-', '+', 0x00, 0x0D, 0x00
+    DB '^', 'e', 0x12, 'a', ' '
+    DB TREMA, 0x11, '5', 0x13, 0x00
+    DB '~', '9', 0x14, '3', '.'
+    DB '-', 'p', 0x00, 0x0D, 0x00
 
 KBD_RING_BUFFER RING_BUFFER 0x0000, 0x0000, KEYBOARD_BUFFER_SIZE, KBD_BUFFER_DATA
 
