@@ -350,11 +350,19 @@ PRINTER_PUTS:
     RET
 
 SIO_GETC: ; get a character from serial, 0x00 is empty
-    CALL SendChar_A
+;    CALL SendChar_A
     CALL ReceiveCharNB_A
     ; transform escaped sequence
     CP ESC
     JP Z, .escape
+
+    ; PUSH AF
+    ; LD A, '.'
+    ; CALL SENDCHAR_A
+    ; POP AF
+    ;    PUSH AF
+    ; CALL HEX2STR
+    ; POP AF
 
     RET
 .escape:
@@ -391,19 +399,107 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     LD A, CUR_LEFT
     RET
 
-KBD_GETC:
-;    LD A, '*'
-;    CALL SendChar_A
+; HAT EQU 0x01
+; TREMA EQU 0x02
+; TILDE EQU 0x03
+PURGE_DEAD_KEY EQU 0x10
+
+KBD_GETC:    ; Return key in A
     CALL Keyboard_GetKey
+    ; Add Dead Key management
+    CP 0x00
+    RET Z
+    PUSH BC
+    LD B, A ; store the received key in B
+    LD A, (DEAD_KEY)
+    CP PURGE_DEAD_KEY
+    JP Z, .purgeDeadKey:
+    CP '^'
+    JP Z, .storedDeadKey
+    CP '¨'
+    JP Z, .storedDeadKey
+    CP '~'
+    JP Z, .storedDeadKey
+.noStoredDeadKey:
+    LD A, B
+    CP '^'
+    JP Z, .newDeadKey
+    CP '¨'
+    JP Z, .newDeadKey
+    CP '~'
+    JP Z, .newDeadKey
+    JP .exit
+.purgeDeadKey:
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, B
+    JP .exit
+.newDeadKey:
+    LD (DEAD_KEY), A
+    LD A, 0x00
+    JP .exit
+.storedDeadKey:
+    LD A, B ; retrieve the new received key
+    CP ' '
+    JP Z, .compose_space
+    CP 'a'
+    JP Z, .compose
+    CP 'e'
+    JP Z, .compose
+    CP 'i'
+    JP Z, .compose
+    CP 'o'
+    JP Z, .compose
+    CP 'u'
+    JP Z, .compose
+    CP '^'
+    JP Z, .returnExtraDeadKey
+    CP '¨'
+    JP Z, .returnExtraDeadKey
+    CP '~'
+    JP Z, .returnExtraDeadKey
+    JP .returnExtraDeadKey
+;    JP .exit
+.compose_space:
+    LD A, (DEAD_KEY)
+    LD B, A
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, B
+    JP .exit
+.compose: ; #TODO DO THE ACTUAL COMPOSITION WITH ACCENT
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'â'
+    JP .exit
+.returnExtraDeadKey:
+    CALL Keyboard_UngetKey
+    LD A, (DEAD_KEY)
+    LD B, A
+    LD A, PURGE_DEAD_KEY
+    LD (DEAD_KEY), A
+    LD A, B
+.exit:
+    POP BC
     RET
+
+ACCENTED_A:
+    DB 'â', 'ä', 'ã'
+ACCENTED_E:
+    DB 'ê', 'ë', '~e'
+ACCENTED_I:
+    DB 'î', 'ï', '~i'
+ACCENTED_O:
+    DB 'ô', 'ö', 'õ'
+ACCENTED_U:
+    DB 'û', 'ü', '~u'
 
 
 STREAM_SELECT: ; bit 0 is serial, bit 1 is video, bit 2 is printer
     DB 0x00
+DEAD_KEY:
+    DB 0x00
 
-; KBD_BUFFER RING_BUFFER
-; KBD_BUFFER_DATA:
-;     BLOCK KBD_BUFFER_LENGTH, 0x00
 
 
     ENDIF

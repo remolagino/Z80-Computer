@@ -55,15 +55,12 @@ START:
     CALL SET_BLINK
 
 .eventLoop:
-    ; CALL Keypad_Scan2
-    ; CALL ReceiveCharNB_A
-
+ 
     CALL GETC
 
     CP 0x00
     JP Z, .eventLoop ; No key pressed, continue loop
 
-;    CALL HEX2STR
 
     CP '²'
     JP Z, .endLoop
