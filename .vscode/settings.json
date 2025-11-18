@@ -6,7 +6,7 @@
 
     },
     "[z80-macroasm]": {
-        "files.encoding": "iso885915"
+        "files.encoding": "iso88591"
     },
     "z80-macroasm.files.exclude": ""
 }
