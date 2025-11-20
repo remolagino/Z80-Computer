@@ -443,15 +443,15 @@ KBD_GETC:    ; Return key in A
     CP ' '
     JP Z, .compose_space
     CP 'a'
-    JP Z, .compose
+    JP Z, .compose_A
     CP 'e'
-    JP Z, .compose
+    JP Z, .compose_E
     CP 'i'
-    JP Z, .compose
+    JP Z, .compose_I
     CP 'o'
-    JP Z, .compose
+    JP Z, .compose_O
     CP 'u'
-    JP Z, .compose
+    JP Z, .compose_U
     CP '^'
     JP Z, .returnExtraDeadKey
     CP '¨'
@@ -466,6 +466,115 @@ KBD_GETC:    ; Return key in A
     LD A, 0x00
     LD (DEAD_KEY), A
     LD A, B
+    JP .exit
+.compose_A:
+    LD B, A
+    LD A, (DEAD_KEY)
+    CP '^'
+    JP Z, .compose_AHat
+    CP '¨'
+    JP Z, .compose_ATrema
+    CP '~'
+    JP Z, .compose_ATilde
+    LD A, B
+    JP .returnExtraDeadKey
+.compose_AHat: ;
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'â'
+    JP .exit
+.compose_ATrema: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ä'
+    JP .exit
+.compose_ATilde: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ã'
+    JP .exit
+.compose_E:
+    LD B, A
+    LD A, (DEAD_KEY)
+    CP '^'
+    JP Z, .compose_EHat
+    CP '¨'
+    JP Z, .compose_ETrema
+    LD A, B
+    JP .returnExtraDeadKey
+.compose_EHat: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ê'
+    JP .exit
+.compose_ETrema: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ë'
+    JP .exit
+.compose_I:
+    LD B, A
+    LD A, (DEAD_KEY)
+    CP '^'
+    JP Z, .compose_IHat
+    CP '¨'
+    JP Z, .compose_ITrema
+    LD A, B
+    JP .returnExtraDeadKey
+.compose_IHat: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'î'
+    JP .exit
+.compose_ITrema: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ï'
+    JP .exit
+.compose_O:
+    LD B, A
+    LD A, (DEAD_KEY)
+    CP '^'
+    JP Z, .compose_OHat
+    CP '¨'
+    JP Z, .compose_OTrema
+    CP '~'
+    JP Z, .compose_OTilde
+    LD A, B
+    JP .returnExtraDeadKey
+.compose_OHat: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ô'
+    JP .exit
+.compose_OTrema: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ö'
+    JP .exit
+.compose_OTilde: ; 
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'õ'
+    JP .exit
+.compose_U:
+    LD B, A
+    LD A, (DEAD_KEY)
+    CP '^'
+    JP Z, .compose_UHat
+    CP '¨'
+    JP Z, .compose_UTrema
+    LD A, B
+    JP .returnExtraDeadKey
+.compose_UHat: ; #TODO DO THE ACTUAL COMPOSITION WITH ACCENT
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'û'
+    JP .exit
+.compose_UTrema: ; #TODO DO THE ACTUAL COMPOSITION WITH ACCENT
+    LD A, 0x00
+    LD (DEAD_KEY), A
+    LD A, 'ü'
     JP .exit
 .compose: ; #TODO DO THE ACTUAL COMPOSITION WITH ACCENT
     LD A, 0x00

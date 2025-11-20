@@ -13,16 +13,23 @@ KEYBOARD_MODIFIERS EQU 0x03 ; modifiers column
 
 KEYBOARD_BUFFER_SIZE EQU 0x09 ; buffer length for keys
 
+SHIFT EQU 0x01
+CTRL EQU 0x02
+ALT EQU 0x08
+
     include "memoryMap.inc"
     include "ringBuffer.asm"
 
 
 Keyboard_Scan: ; Scan the keypad columns
-
     PUSH AF
     PUSH BC
     PUSH DE
     PUSH IX
+; Read modifiers keys (shift, ctrl, alt)
+    IN A, (KEYBOARD_IO_ADDRESS + KEYBOARD_MODIFIERS)
+    LD (MODIFERS),A
+; Keyboard scan
     LD C, KEYBOARD_IO_ADDRESS
     LD IX, DECODE_MATRIX ; Pointer to rows data
     LD DE, KEYBOARD_STATE
@@ -46,7 +53,6 @@ Keyboard_Scan: ; Scan the keypad columns
     POP AF ; the jump to exit skip the pop AF after continue so we put it here
     JP .exit ; early exit at the the first not processed click so as the 
     ; the keypadScan only call onKeyPressed once (to be compatible with getc)
-
 .notPressed:
     LD A, (DE) 
     OR A; check if the key was released
@@ -56,7 +62,6 @@ Keyboard_Scan: ; Scan the keypad columns
     LD A, (DE)
     DEC A ; decrement the debounce counter
     LD (DE), A
-
 .continue:
     POP AF
     SRL A ; Shift right to check next bit
@@ -66,7 +71,7 @@ Keyboard_Scan: ; Scan the keypad columns
     DJNZ .rowLoop ; Loop for all bits in the column
     INC C
     LD A, C
-    CP KEYBOARD_IO_ADDRESS + KEYBOARD_COLUMNS +1 ; Check if we have scanned all columns 
+    CP KEYBOARD_IO_ADDRESS + KEYBOARD_COLUMNS ; Check if we have scanned all columns 
     JP NZ, .colLoop ; If not, continue scanning
 .exit:
     POP IX
@@ -75,10 +80,41 @@ Keyboard_Scan: ; Scan the keypad columns
     POP AF
     RET
 
+; OnKeyPressed:
+;     PUSH IY
+;     LD IY, KBD_RING_BUFFER
+;     LD A, (IX)
+;     CALL RING_PUT
+;     POP IY
+;     RET
+
+
 OnKeyPressed:
     PUSH IY
     LD IY, KBD_RING_BUFFER
+    LD A, (MODIFERS)
+    LD B, A
+    AND SHIFT ; test for shift
+    JP NZ, .shiftMatrix
+    LD A, B
+    AND CTRL ; test for CTRL
+    JP NZ, .ctrlMatrix
+    LD A, B
+    AND ALT ; test for ALT
+    JP NZ, .altMatrix
+; no modifier key
     LD A, (IX)
+    JP .exit
+.shiftMatrix:
+    LD A, (IX + SHIFT_MATRIX -DECODE_MATRIX )
+    JP .exit
+.ctrlMatrix:
+    LD A, (IX + CTRL_MATRIX - DECODE_MATRIX)
+    JP .exit
+.altMatrix:
+    LD A, (IX + ALT_MATRIX - DECODE_MATRIX)
+    JP .exit
+.exit:   
     CALL RING_PUT
     POP IY
     RET
@@ -102,13 +138,28 @@ Keyboard_UngetKey: ; put char in A back in the ring buffer
     POP IY
     RET 
 
-TREMA EQU 0xA8
+;TREMA EQU 0xA8
 
 DECODE_MATRIX: ; organised by columns
-    DB '^', 'e', 0x12, 'a', ' '
-    DB TREMA, 0x11, '5', 0x13, 0x00
-    DB '~', '9', 0x14, '3', '.'
-    DB '-', 'p', 0x00, 0x0D, 0x00
+    DB '^', 'a', 0x12, 'e', ' '
+    DB '¨', 0x11, 'i', 0x13, 0x00
+    DB '~', 'o', 0x14, 'u', '.'
+;    DB '-', 'p', 0x00, 0x0D, 0x00
+SHIFT_MATRIX: ; organised by columns
+    DB 'A', 'D', 'G', 'J', 'M'
+    DB 'B', 'E', 'H', 'K', 0x00
+    DB 'C', 'F', 'I', 'L', 'N'
+;    DB '-', 'p', 0x00, 0x0D, 0x00
+CTRL_MATRIX: ; organised by columns
+    DB 0x80, 0x81, 0x82, 0x83, 0x84
+    DB 0x85, 0x86, 0x87, 0x88, 0x00
+    DB 0x89, 0x8A, 0x8B, 0x8C, 0x8D
+;    DB '-', 'p', 0x00, 0x0D, 0x00
+ALT_MATRIX: ; organised by columns
+    DB '^', 'a', 0x12, 'e', ' '
+    DB '¨', 0x11, 'i', 0x13, 0x00
+    DB '~', 'o', 0x14, 'u', '.'
+;    DB '-', 'p', 0x00, 0x0D, 0x00
 
 KBD_RING_BUFFER RING_BUFFER 0x0000, 0x0000, KEYBOARD_BUFFER_SIZE, KBD_BUFFER_DATA
 

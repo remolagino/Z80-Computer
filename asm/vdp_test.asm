@@ -138,28 +138,6 @@ START:
     RET                     ; or HALT
 
 
-; OnKeyPressed:
-;     PUSH AF
-;     PUSH BC
-;     LD HL, (CURSOR_IDX)
-;     LD C, 0x00
-;     CALL SET_BLINK ; unset blink before moving
-;     LD A, (IX)
-;     CP CR
-;     JP NZ, .notEnterKey
-;     CALL PUTC
-;     LD A, LF
-; .notEnterKey:
-;     CALL PUTC
-;     LD (CURSOR_IDX), HL
-;     LD C, 0x01
-;     CALL SET_BLINK ; unset blink before moving
-; .continue:
-;     POP BC
-;     POP AF
-;     RET
-
-
 INIT_PATTERN_LAYOUT_TABLE: ; write at adress 0x0000
     PUSH AF
     PUSH BC
