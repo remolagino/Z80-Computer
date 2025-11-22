@@ -8,6 +8,7 @@ STREAM_OUT_PRINTER EQU 0x04
 STREAM_IN_SERIAL EQU 0x10
 STREAM_IN_KEYBOARD EQU 0x20
 
+INSERT EQU 0x05
 BS EQU 0x08
 HTAB EQU 0x09
 LF EQU 0x0A
@@ -17,6 +18,7 @@ CUR_LEFT EQU 0x12
 CUR_DOWN EQU 0x13
 CUR_RIGHT EQU 0x14
 ESC EQU 0x1B
+DELETE EQU 0x7F
 
     MACRO LONG_NOP
     NOP
@@ -355,15 +357,9 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     ; transform escaped sequence
     CP ESC
     JP Z, .escape
-
-    ; PUSH AF
-    ; LD A, '.'
-    ; CALL SENDCHAR_A
-    ; POP AF
-    ;    PUSH AF
-    ; CALL HEX2STR
-    ; POP AF
-
+    CP 0x7F
+    RET NZ
+    LD A, 'X'
     RET
 .escape:
 ;    LONG_NOP
@@ -371,7 +367,7 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     CALL ReceiveChar_A
     CP '['
     JP Z, .escapedSequence
-    SCF
+;    SCF
     RET
 .escapedSequence:
 ;    LONG_NOP
@@ -385,6 +381,11 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     JP Z, .right
     CP 'D'
     JP Z, .left
+    CP '2'
+    JP Z, .insert
+    CP '3'
+    JP Z, .delete
+    LD A, '?'
     RET
 .up:
     LD A, CUR_UP
@@ -397,6 +398,24 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     RET
 .left:
     LD A, CUR_LEFT
+    RET
+.insert:
+    CALL ReceiveChar_A
+    CP '~'
+    JP Z, .send_insert
+    LD A, '?'
+    RET
+.send_insert:
+    LD A, INSERT
+    RET
+.delete:
+    CALL ReceiveChar_A
+    CP '~'
+    JP Z, .send_delete
+    LD A, '?'
+    RET
+.send_delete:
+    LD A, DELETE
     RET
 
 ; HAT EQU 0x01

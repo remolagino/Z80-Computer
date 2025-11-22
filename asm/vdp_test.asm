@@ -72,10 +72,36 @@ START:
     JP Z, .rotateColor
     CP CR      ; Enter key
     JP Z, .enterKey
+    CP DELETE
+    JP Z, .delete
+    CP INSERT
+    JP Z, .insert
 
     LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL SET_BLINK ; unset blink at current position
+    CALL PUTC
+    LD (CURSOR_IDX), HL
+    LD C, 0x01
+    CALL SET_BLINK ; set blink at new position
+    JP .eventLoop
+
+.delete:
+    LD HL, (CURSOR_IDX)
+    LD C, 0x00
+    CALL SET_BLINK ; unset blink at current position
+    LD A, BS
+    CALL PUTC
+    LD (CURSOR_IDX), HL
+    LD C, 0x01
+    CALL SET_BLINK ; set blink at new position
+    JP .eventLoop
+
+.insert:
+    LD HL, (CURSOR_IDX)
+    LD C, 0x00
+    CALL SET_BLINK ; unset blink at current position
+    LD A,'¤'
     CALL PUTC
     LD (CURSOR_IDX), HL
     LD C, 0x01

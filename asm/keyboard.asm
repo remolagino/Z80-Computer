@@ -7,19 +7,20 @@
 
  
 KEYBOARD_IO_ADDRESS EQU 0x60 ; Keypad Columns address
-KEYBOARD_COLUMNS EQU 0x03 ; number of columns
-KEYBOARD_ROWS EQU 0x05 ; number of rows
-KEYBOARD_MODIFIERS EQU 0x03 ; modifiers column
+; KEYBOARD_COLUMNS EQU 0x03 ; number of columns
+; KEYBOARD_ROWS EQU 0x05 ; number of rows
+; KEYBOARD_MODIFIERS EQU 0x03 ; modifiers column
 
 KEYBOARD_BUFFER_SIZE EQU 0x09 ; buffer length for keys
 
-SHIFT EQU 0x01
-CTRL EQU 0x02
-ALT EQU 0x08
+; SHIFT EQU 0x01
+; CTRL EQU 0x02
+; ALT EQU 0x08
 
     include "memoryMap.inc"
     include "ringBuffer.asm"
-
+;    include "keyboard.inc"
+    include "keypad.inc"
 
 Keyboard_Scan: ; Scan the keypad columns
     PUSH AF
@@ -80,14 +81,6 @@ Keyboard_Scan: ; Scan the keypad columns
     POP AF
     RET
 
-; OnKeyPressed:
-;     PUSH IY
-;     LD IY, KBD_RING_BUFFER
-;     LD A, (IX)
-;     CALL RING_PUT
-;     POP IY
-;     RET
-
 
 OnKeyPressed:
     PUSH IY
@@ -138,28 +131,27 @@ Keyboard_UngetKey: ; put char in A back in the ring buffer
     POP IY
     RET 
 
-;TREMA EQU 0xA8
 
-DECODE_MATRIX: ; organised by columns
-    DB '^', 'a', 0x12, 'e', ' '
-    DB '¨', 0x11, 'i', 0x13, 0x00
-    DB '~', 'o', 0x14, 'u', '.'
-;    DB '-', 'p', 0x00, 0x0D, 0x00
-SHIFT_MATRIX: ; organised by columns
-    DB 'A', 'D', 'G', 'J', 'M'
-    DB 'B', 'E', 'H', 'K', 0x00
-    DB 'C', 'F', 'I', 'L', 'N'
-;    DB '-', 'p', 0x00, 0x0D, 0x00
-CTRL_MATRIX: ; organised by columns
-    DB 0x80, 0x81, 0x82, 0x83, 0x84
-    DB 0x85, 0x86, 0x87, 0x88, 0x00
-    DB 0x89, 0x8A, 0x8B, 0x8C, 0x8D
-;    DB '-', 'p', 0x00, 0x0D, 0x00
-ALT_MATRIX: ; organised by columns
-    DB '^', 'a', 0x12, 'e', ' '
-    DB '¨', 0x11, 'i', 0x13, 0x00
-    DB '~', 'o', 0x14, 'u', '.'
-;    DB '-', 'p', 0x00, 0x0D, 0x00
+; DECODE_MATRIX: ; organised by columns
+;     DB '^', 'a', 0x12, 'e', ' '
+;     DB '¨', 0x11, 'i', 0x13, 0x00
+;     DB '~', 'o', 0x14, 'u', '.'
+; ;    DB '-', 'p', 0x00, 0x0D, 0x00
+; SHIFT_MATRIX: ; organised by columns
+;     DB 0x00, 'D', 'G', 'J', 'M'
+;     DB 'B', 'E', 'H', 'K', 0x00
+;     DB 'C', 'F', 'I', 'L', 'N'
+; ;    DB '-', 'p', 0x00, 0x0D, 0x00
+; CTRL_MATRIX: ; organised by columns
+;     DB 0x80, 0x81, 0x82, 0x83, 0x84
+;     DB 0x85, 0x86, 0x87, 0x88, 0x00
+;     DB 0x89, 0x8A, 0x8B, 0x8C, 0x8D
+; ;    DB '-', 'p', 0x00, 0x0D, 0x00
+; ALT_MATRIX: ; organised by columns
+;     DB '?', 'a', 0x12, 'e', ' '
+;     DB '¤', 0x11, 'i', 0x13, 0x00
+;     DB '~', 'o', 0x14, 'u', '.'
+; ;    DB '-', 'p', 0x00, 0x0D, 0x00
 
 KBD_RING_BUFFER RING_BUFFER 0x0000, 0x0000, KEYBOARD_BUFFER_SIZE, KBD_BUFFER_DATA
 
