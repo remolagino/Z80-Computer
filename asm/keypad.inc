@@ -4,9 +4,9 @@
     IFNDEF __KEYPAD_INC__
     DEFINE __KEYPAD_INC__ 1
 
-KEYBOARD_COLUMNS EQU 0x02 ; number of columns
+KEYBOARD_COLUMNS EQU 0x03 ; number of columns
 KEYBOARD_ROWS EQU 0x05 ; number of rows
-KEYBOARD_CONTROL_ROWS EQU 0x02 ; control key column (enter, bs, del, inser, up, down, left, right)
+KEYBOARD_CONTROL_ROWS EQU 0x04 ; control key column (enter, bs, del, inser, up, down, left, right)
 KEYBOARD_MODIFIERS EQU 0x03 ; modifiers column (shift, control, alt)
 
 KBD_INSERT EQU 0x05
@@ -30,24 +30,24 @@ CTRL_KEYS:
     DB KBD_UP, KBD__LEFT, KBD__DOWN, KBD__RIGHT
 
 DECODE_MATRIX: ; organised by columns
-    DB '^', 'a', 0x12, 'e', ' '
-    DB '¨', 0x11, 'i', 0x13, 0x00
-    DB '~', 'o', 0x14, 'u', '.'
+    DB '^', 'a', 'o', 'b', '0'
+    DB 'x', 'e', 'u', 'c', 0x00
+    DB '~', 'i', 's', 'd', KBD_ENTER
 ;    DB '-', 'p', 0x00, 0x0D, 0x00
 SHIFT_MATRIX: ; organised by columns
-    DB 0x00, 'D', 'G', 'J', 'M'
-    DB 'B', 'E', 'H', 'K', 0x00
-    DB 'C', 'F', 'I', 'L', 'N'
+    DB '¨', 'A', 'O', 'B', '0'
+    DB 'X', 'E', 'U', 'C', 0x00
+    DB 'C', 'I', 'S', 'D', KBD_ENTER
 ;    DB '-', 'p', 0x00, 0x0D, 0x00
 CTRL_MATRIX: ; organised by columns
-    DB 0x80, 0x81, 0x82, 0x83, 0x84
-    DB 0x85, 0x86, 0x87, 0x88, 0x00
-    DB 0x89, 0x8A, 0x8B, 0x8C, 0x8D
+    DB 0x82, 0x86, 0x84, 0x80, 0x81
+    DB 0x88, 0x8A, 0x89, 0x8C, 0x00
+    DB 0x83, 0x87, 0x85, 0x8B, 0x8D
 ;    DB '-', 'p', 0x00, 0x0D, 0x00
 ALT_MATRIX: ; organised by columns
-    DB '?', 'a', 0x12, 'e', ' '
-    DB '¤', 0x11, 'i', 0x13, 0x00
-    DB '~', 'o', 0x14, 'u', '.'
+    DB '?', 'a', KBD__LEFT, 'e', ' '
+    DB '¤', KBD_UP, 'i', KBD__DOWN, 0x00
+    DB '~', 'o', KBD__RIGHT, 'u', KBD_ENTER
 ;    DB '-', 'p', 0x00, 0x0D, 0x00
 
     ENDIF
