@@ -11,25 +11,25 @@
     ORG     0x5000          ; Start address
 
     include "jumpTable.inc"
-    include "memoryMap.inc"
-    JP START
+    include "memoryMapv2.inc"
+    JP Main
 
 ;    include "serial.asm"
     include "stdio.asm"
     include "vdp_core.asm"
-
+    include "lineEdit.asm"
 
 CURSOR_IDX:
     DW 0 ; row 0, col 0
 
-START:
+Main:
 
     LD HL, CR_LF
     CALL PRINT_STRING
 ; STREAM_IN_KEYBOARD|
     LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
     LD (STREAM_SELECT), A
-    LD HL, StreamMsg
+    LD HL, STREAM_MSG
     CALL PRINT_STRING
     LD A, (STREAM_SELECT)
     CALL HEX2STR
@@ -43,20 +43,24 @@ START:
     CALL INIT_COLOR_TABLE
 
     LD HL, 320
-    LD DE, MeasureMsg
-    CALL PUTS
+    LD DE, MEASURE_MSG
+    CALL PutS
 
-    LD DE, TestMsg
-    CALL PUTS
+    LD DE, TEST_MSG
+    CALL PutS
+
+    CALL LineEdit_Init
+    LD DE, EDIT_BUFFER_ADDRESS
+    CALL PutS
 
     LD B, 0
     LD (CURSOR_IDX), HL ; put the cursor at 0
     LD C, 0x01
-    CALL SET_BLINK
+    CALL Set_Blink
 
 .eventLoop:
  
-    CALL GETC
+    CALL GetC
 
     CP 0x00
     JP Z, .eventLoop ; No key pressed, continue loop
@@ -64,12 +68,12 @@ START:
 
     CP '²'
     JP Z, .endLoop
-    CP '9'
-    JP Z, .screenVertical
-    CP '3'
-    JP Z, .screenHorizontal
-    CP '5'
-    JP Z, .rotateColor
+    ; CP '9'
+    ; JP Z, .screenVertical
+    ; CP '3'
+    ; JP Z, .screenHorizontal
+    ; CP '5'
+    ; JP Z, .rotateColor
     CP CR      ; Enter key
     JP Z, .enterKey
     CP DELETE
@@ -79,53 +83,53 @@ START:
 
     LD HL, (CURSOR_IDX)
     LD C, 0x00
-    CALL SET_BLINK ; unset blink at current position
-    CALL PUTC
+    CALL Set_Blink ; unset blink at current position
+    CALL PutC
     LD (CURSOR_IDX), HL
     LD C, 0x01
-    CALL SET_BLINK ; set blink at new position
+    CALL Set_Blink ; set blink at new position
     JP .eventLoop
 
 .delete:
     LD HL, (CURSOR_IDX)
     LD C, 0x00
-    CALL SET_BLINK ; unset blink at current position
+    CALL Set_Blink ; unset blink at current position
     LD A, BS
-    CALL PUTC
+    CALL PutC
     LD (CURSOR_IDX), HL
     LD C, 0x01
-    CALL SET_BLINK ; set blink at new position
+    CALL Set_Blink ; set blink at new position
     JP .eventLoop
 
 .insert:
     LD HL, (CURSOR_IDX)
     LD C, 0x00
-    CALL SET_BLINK ; unset blink at current position
+    CALL Set_Blink ; unset blink at current position
     LD A,'¤'
-    CALL PUTC
+    CALL PutC
     LD (CURSOR_IDX), HL
     LD C, 0x01
-    CALL SET_BLINK ; set blink at new position
+    CALL Set_Blink ; set blink at new position
     JP .eventLoop
 
 .enterKey:
     LD HL, (CURSOR_IDX)
     LD C, 0x00
-    CALL SET_BLINK ; unset blink at current position
+    CALL Set_Blink ; unset blink at current position
     LD A, LF
-    CALL PUTC
+    CALL PutC
     LD A, CR
-    CALL PUTC
+    CALL PutC
     LD (CURSOR_IDX), HL
     LD C, 0x01
-    CALL SET_BLINK ; set blink at new position
+    CALL Set_Blink ; set blink at new position
     JP .eventLoop
 
 .rotateColor:
-    LD      C, 7
-    LD      A, 0xF0         ; Text color: white (F) 
+    LD C, 7
+    LD A, 0xF0         ; Text color: white (F) 
     OR B ; put B color in background
-    CALL    WRITE_REG
+    CALL Write_Reg
     INC B
     LD A, B
     AND 0x0F
@@ -133,7 +137,7 @@ START:
     JP .eventLoop
 
 .screenVertical:
-    LD      C, 18
+    LD C, 18
     LD A, (SCREEN_OFFSET)
     ADD A, 0x10
     AND A, 0xF0
@@ -143,7 +147,7 @@ START:
     OR B
 ;    CALL HEX2STR
     LD (SCREEN_OFFSET), A
-    CALL WRITE_REG
+    CALL Write_Reg
     JP .eventLoop
 .screenHorizontal:
     LD      C, 18
@@ -156,7 +160,7 @@ START:
     OR B
 ;    CALL HEX2STR
     LD (SCREEN_OFFSET), A
-    CALL WRITE_REG
+    CALL Write_Reg
     JP .eventLoop
 .endLoop:
     LD HL, CR_LF
@@ -170,7 +174,7 @@ INIT_PATTERN_LAYOUT_TABLE: ; write at adress 0x0000
     PUSH HL
 
     LD HL, PATTERN_LAYOUT_TABLE_BASE_ADDR
-    CALL SET_VRAM_ADDR
+    CALL Set_VRAM_Address
     LD HL, 80*27 ; number of bytes to write (0x0B0D = 2821 bytes)
 .loop:
     LD A, ' ' ; value to write to initialize VRAM
@@ -196,7 +200,7 @@ INIT_COLOR_TABLE: ; write at adress 0x0000
     PUSH BC
     PUSH HL
     LD HL, COLOR_TABLE_BASE_ADDR
-    CALL SET_VRAM_ADDR
+    CALL Set_VRAM_Address
 
     LD HL, 270 ; number of bytes to write (0x0B0D = 2821 bytes)
 .loop:
@@ -222,15 +226,15 @@ INIT_COLOR_TABLE: ; write at adress 0x0000
 CR_LF:
     DB CR, LF, 0x00 ; Carriage return + line feed
 
-PressedMsg:
+PRESSED_MSG:
     DB 'Key Pressed : ', 0x00
-ReleasedMsg:
+RELEASED_MSG:
     DB 'Key Released : ', 0x00
-StreamMsg:
+STREAM_MSG:
     DB "Stream Selected : ", 0x00
-TestMsg:
+TEST_MSG:
     DB HTAB, HTAB, "This.is.a.test message.!!", CR, LF,  "Prout", CUR_UP, CUR_LEFT, CUR_LEFT, "prout !", 0x00
-MeasureMsg:
+MEASURE_MSG:
     DB "01234567012345670123456701234567012345670123456701234567", 0x00
 
 SCREEN_OFFSET:

@@ -18,7 +18,7 @@ PATTERN_LAYOUT_TABLE_BASE_ADDR EQU 0x0000 ; Base address of pattern name table i
 
 
 
-WRITE_REG: ; REG number in C, Value in A
+Write_Reg: ; REG number in C, Value in A
     PUSH AF
     ;PUSH BC
     ;DI
@@ -31,14 +31,14 @@ WRITE_REG: ; REG number in C, Value in A
     POP AF
     RET
 
-WRITE_REG_INDIRECT: ; REG number in A (add +128 for no auto increment), Values in (HL), number of values in B
+Writereg_Indirect: ; REG number in A (add +128 for no auto increment), Values in (HL), number of values in B
     LD C, 17 ; 17: indirect register number
-    CALL WRITE_REG
+    CALL Write_Reg
     LD C, VDP_REG_INDIR        ; you can also write ld bc,#nn9B, which is faster
     OTIR
     RET
 
-SET_VRAM_ADDR: ; Set VRAM address from HL
+Set_VRAM_Address: ; Set VRAM address from HL
     PUSH AF
     PUSH BC
     PUSH HL
@@ -49,7 +49,7 @@ SET_VRAM_ADDR: ; Set VRAM address from HL
 
     LD C, 14
 ;    LD A, 0x00 ; Set Address A16-A15-A14
-    CALL WRITE_REG
+    CALL Write_Reg
     LD A, L
 ;    LD A, 0x00 ; Set Address A7..A0
 
@@ -64,7 +64,7 @@ SET_VRAM_ADDR: ; Set VRAM address from HL
     POP AF
     RET
 
-SET_BLINK: ; set or unset blink at address HL (in pattern layout) based on C value (0: unset, 1: set)
+Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C value (0: unset, 1: set)
     PUSH AF
     PUSH BC
     PUSH DE
@@ -84,7 +84,7 @@ SET_BLINK: ; set or unset blink at address HL (in pattern layout) based on C val
 
     LD DE, COLOR_TABLE_BASE_ADDR
     ADD HL, DE ; compute the address in VRAM of the color byte
-    CALL SET_VRAM_ADDR
+    CALL Set_VRAM_Address
 
     LD A, C
 .shift_loop:  ; Shift the blink  to the right position
@@ -99,14 +99,14 @@ SET_BLINK: ; set or unset blink at address HL (in pattern layout) based on C val
     RET
 
 
-WRITE_RAM: ; write at adress HL in Pattern layout table the character in reg A
+Write_RAM: ; write at adress HL in Pattern layout table the character in reg A
     PUSH AF
     PUSH DE
     PUSH HL
 
     LD DE, PATTERN_LAYOUT_TABLE_BASE_ADDR
     ADD HL, DE ; compute the address in VRAM of the pattern layout position
-    CALL SET_VRAM_ADDR
+    CALL Set_VRAM_Address
 
     OUT (VRAM_DATA), A
 
