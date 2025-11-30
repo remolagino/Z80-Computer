@@ -17,10 +17,10 @@ KEYBOARD_BUFFER_SIZE EQU 0x09 ; buffer length for keys
 ; CTRL EQU 0x02
 ; ALT EQU 0x08
 
-    include "memoryMap.inc"
+    include "memoryMapv2.inc"
     include "ringBuffer.asm"
-;    include "keyboard.inc"
-    include "keypad.inc"
+    include "keyboard.inc"
+ ;   include "keypad.inc"
 
 Keyboard_Scan: ; Scan the keypad columns
     PUSH AF
@@ -28,8 +28,8 @@ Keyboard_Scan: ; Scan the keypad columns
     PUSH DE
     PUSH IX
 ; Read modifiers keys (shift, ctrl, alt)
-    IN A, (KEYBOARD_IO_ADDRESS + KEYBOARD_MODIFIERS)
-    LD (MODIFERS),A
+    IN A, (KEYBOARD_IO_ADDRESS + KEYBOARD_MODIFIERS_COL)
+    LD (KEYBOARD_MODIFIERS),A
 ; Keyboard scan
     LD C, KEYBOARD_IO_ADDRESS
     LD IX, DECODE_MATRIX ; Pointer to rows data
@@ -49,11 +49,9 @@ Keyboard_Scan: ; Scan the keypad columns
     ;The button was not already pressed
     JP NZ, .continue
     CALL OnKeyPressed
-    LD A, 0x40 ; set the key as pressed; debounce counter
+    LD A, 0x20 ; set the key as pressed; debounce counter
     LD (DE), A
-    POP AF ; the jump to exit skip the pop AF after continue so we put it here
-    JP .exit ; early exit at the the first not processed click so as the 
-    ; the keypadScan only call onKeyPressed once (to be compatible with getc)
+    JP .continue
 .notPressed:
     LD A, (DE) 
     OR A; check if the key was released
@@ -68,12 +66,50 @@ Keyboard_Scan: ; Scan the keypad columns
     SRL A ; Shift right to check next bit
     INC IX ; Move to next row data
     INC DE
-
     DJNZ .rowLoop ; Loop for all bits in the column
     INC C
     LD A, C
     CP KEYBOARD_IO_ADDRESS + KEYBOARD_COLUMNS ; Check if we have scanned all columns 
     JP NZ, .colLoop ; If not, continue scanning
+
+; Read the Control Key column
+    LD IX, CTRL_KEYS_MATRIX ; Pointer to control keys Columns data
+    IN A, (KEYBOARD_IO_ADDRESS + KEYBOARD_CONTROL_COL)
+    LD B, 8 ; Number of modifier keys to scan (8 bits)
+.controlRowLoop:
+    PUSH AF
+    BIT 0, A ; Check if the bit is Set
+    JP Z, .ctrlNotPressed ; If not pressed, skip to next bit
+    ;The button is pressed
+.ctrlPressed:
+    LD A, (DE)
+    OR A ; check if the state is already set
+    ;The button was not already pressed
+    JP NZ, .ctrlContinue
+    PUSH IY
+    LD  IY, KBD_RING_BUFFER
+    LD A, (IX)
+    CALL RING_PUT
+    POP IY
+    LD A, 0x40 ; set the key as pressed; debounce counter
+    LD (DE), A
+    JP .ctrlContinue
+.ctrlNotPressed:
+    LD A, (DE) 
+    OR A; check if the key was released
+    JP Z, .ctrlContinue 
+;    CP 0x01
+;    CALL Z, OnKeyReleased
+    LD A, (DE)
+    DEC A ; decrement the debounce counter
+    LD (DE), A
+.ctrlContinue:
+    POP AF
+    SRL A ; Shift right to check next bit
+    INC IX ; Move to next row data
+    INC DE
+    DJNZ .controlRowLoop ; Loop for all bits in the column
+
 .exit:
     POP IX
     POP DE
@@ -83,9 +119,11 @@ Keyboard_Scan: ; Scan the keypad columns
 
 
 OnKeyPressed:
+    PUSH AF
+    PUSH BC
     PUSH IY
     LD IY, KBD_RING_BUFFER
-    LD A, (MODIFERS)
+    LD A, (KEYBOARD_MODIFIERS)
     LD B, A
     AND SHIFT ; test for shift
     JP NZ, .shiftMatrix
@@ -110,6 +148,8 @@ OnKeyPressed:
 .exit:   
     CALL RING_PUT
     POP IY
+    POP BC
+    POP AF
     RET
 
 OnKeyReleased:
@@ -130,28 +170,6 @@ Keyboard_UngetKey: ; put char in A back in the ring buffer
     CALL RING_UNGET
     POP IY
     RET 
-
-
-; DECODE_MATRIX: ; organised by columns
-;     DB '^', 'a', 0x12, 'e', ' '
-;     DB '¨', 0x11, 'i', 0x13, 0x00
-;     DB '~', 'o', 0x14, 'u', '.'
-; ;    DB '-', 'p', 0x00, 0x0D, 0x00
-; SHIFT_MATRIX: ; organised by columns
-;     DB 0x00, 'D', 'G', 'J', 'M'
-;     DB 'B', 'E', 'H', 'K', 0x00
-;     DB 'C', 'F', 'I', 'L', 'N'
-; ;    DB '-', 'p', 0x00, 0x0D, 0x00
-; CTRL_MATRIX: ; organised by columns
-;     DB 0x80, 0x81, 0x82, 0x83, 0x84
-;     DB 0x85, 0x86, 0x87, 0x88, 0x00
-;     DB 0x89, 0x8A, 0x8B, 0x8C, 0x8D
-; ;    DB '-', 'p', 0x00, 0x0D, 0x00
-; ALT_MATRIX: ; organised by columns
-;     DB '?', 'a', 0x12, 'e', ' '
-;     DB '¤', 0x11, 'i', 0x13, 0x00
-;     DB '~', 'o', 0x14, 'u', '.'
-; ;    DB '-', 'p', 0x00, 0x0D, 0x00
 
 KBD_RING_BUFFER RING_BUFFER 0x0000, 0x0000, KEYBOARD_BUFFER_SIZE, KBD_BUFFER_DATA
 

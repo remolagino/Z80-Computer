@@ -6,8 +6,8 @@
 
 KEYBOARD_COLUMNS EQU 0x03 ; number of columns
 KEYBOARD_ROWS EQU 0x05 ; number of rows
-KEYBOARD_CONTROL_ROWS EQU 0x04 ; control key column (enter, bs, del, inser, up, down, left, right)
-KEYBOARD_MODIFIERS EQU 0x03 ; modifiers column (shift, control, alt)
+KEYBOARD_CONTROL_COL EQU 0x04 ; control key column (enter, bs, del, inser, up, down, left, right)
+KEYBOARD_MODIFIERS_COL EQU 0x03 ; modifiers column (shift, control, alt)
 
 KBD_INSERT EQU 0x05
 KBD_BKSP EQU 0x08

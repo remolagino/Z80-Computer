@@ -6,16 +6,16 @@
     IFNDEF __RING_BUFFER__
     DEFINE __RING_BUFFER__ 1
 
-BUFFER_CAPACITY EQU 0x0009
-IN_BUFFER EQU 0x4200
+RINGBUFFER_DEFAULTSIZE EQU 0x0009
+RINGBUFFER_DEFAULTADDRESS EQU 0x4200
 
     STRUCT RING_BUFFER
 HEAD_PTR       WORD   0   ; 16-bit word: Points to the next memory location to WRITE data to
 TAIL_PTR       WORD   0   ; 16-bit word: Points to the next memory location to READ data from
 ; Note: HEAD and TAIL pointers will wrap around to the start of the data area.
-BUFFER_SIZE    WORD   BUFFER_CAPACITY   ; 16-bit word: Holds the maximum capacity of the buffer (e.g., 256)
+RINGBUFFER_SIZE    WORD   RINGBUFFER_DEFAULTSIZE   ; 16-bit word: Holds the maximum capacity of the buffer (e.g., 256)
                                         ; actual buffer capacity is one less than the buffer size
-BUFFER_ADDRESS WORD IN_BUFFER
+RINGBUFFER_ADDRESS WORD RINGBUFFER_DEFAULTADDRESS
     ENDS          ; End of the structure definition
 
 
@@ -23,8 +23,8 @@ BUFFER_ADDRESS WORD IN_BUFFER
 INIT_BUFFER: ; Initialised Ring Buffer at IY, capacity in BC, buffer address in DE
     LD (IY + RING_BUFFER.HEAD_PTR), 0x0000
     LD (IY + RING_BUFFER.TAIL_PTR), 0x0000
-    LD (IY + RING_BUFFER.BUFFER_SIZE), BC
-    LD (IY + RING_BUFFER.BUFFER_ADDRESS), DE
+    LD (IY + RING_BUFFER.RINGBUFFER_SIZE), BC
+    LD (IY + RING_BUFFER.RINGBUFFER_ADDRESS), DE
 
     RET
 
@@ -38,16 +38,16 @@ RING_PUT: ; Write reg A in ring buffer at address IY, carry flag is set if buffe
     OR A ; clear carry
     SBC HL, DE
     JP Z, .fullBuffer
-    LD DE, (IY + RING_BUFFER.BUFFER_SIZE)
+    LD DE, (IY + RING_BUFFER.RINGBUFFER_SIZE)
     SBC HL, DE
     JP Z, .fullBuffer
     ; adding the elmt in the buffer
-    LD HL, (IY + RING_BUFFER.BUFFER_ADDRESS)
+    LD HL, (IY + RING_BUFFER.RINGBUFFER_ADDRESS)
     LD DE, (IY + RING_BUFFER.HEAD_PTR)
     ADD HL, DE
     LD (HL), A
     INC DE
-    LD HL, (IY + RING_BUFFER.BUFFER_SIZE)
+    LD HL, (IY + RING_BUFFER.RINGBUFFER_SIZE)
     OR A ; clear carry
     SBC HL, DE
     JP Z, .endOfBuffer ; loop back at the beginning of buffer
@@ -74,7 +74,7 @@ RING_GET: ; put in reg A the first unread elmt in the ring buffer at address IYL
     OR A
     SBC HL, DE
     JP Z, .emptyBuffer
-    LD HL, (IY + RING_BUFFER.BUFFER_ADDRESS)
+    LD HL, (IY + RING_BUFFER.RINGBUFFER_ADDRESS)
     ADD HL, DE
     LD A, (HL)
     ; #TODO Remove when behaviour is fine
@@ -85,7 +85,7 @@ RING_GET: ; put in reg A the first unread elmt in the ring buffer at address IYL
     ; #TODO Remove above
     INC DE
     OR A
-    LD HL, (IY + RING_BUFFER.BUFFER_SIZE)
+    LD HL, (IY + RING_BUFFER.RINGBUFFER_SIZE)
     SBC HL, DE
     JP Z, .endOfBuffer
     LD (IY + RING_BUFFER.TAIL_PTR), DE
@@ -113,24 +113,24 @@ RING_UNGET: ; put back reg A in tail of ring buffer at address IY, carry flag is
     OR A ; clear carry
     SBC HL, DE
     JP Z, .fullBuffer
-    LD DE, (IY + RING_BUFFER.BUFFER_SIZE)
+    LD DE, (IY + RING_BUFFER.RINGBUFFER_SIZE)
     SBC HL, DE
     JP Z, .fullBuffer
     ; pushing the elmt back at the tail of the buffer
-    LD HL, (IY + RING_BUFFER.BUFFER_ADDRESS)
+    LD HL, (IY + RING_BUFFER.RINGBUFFER_ADDRESS)
     LD DE, (IY + RING_BUFFER.TAIL_PTR)
     PUSH AF
     LD A, D
     OR E ; check if DE=0x0000
     JP NZ, .notDEequ0
-    LD DE, (IY + RING_BUFFER.BUFFER_SIZE)
+    LD DE, (IY + RING_BUFFER.RINGBUFFER_SIZE)
 .notDEequ0:
     DEC DE
     ADD HL, DE
     POP AF
     LD (HL), A
    ; DEC DE
-    LD HL, (IY + RING_BUFFER.BUFFER_SIZE)
+    LD HL, (IY + RING_BUFFER.RINGBUFFER_SIZE)
     OR A ; clear carry
     SBC HL, DE
     JP Z, .endOfBuffer ; loop back at the beginning of buffer
@@ -179,7 +179,7 @@ RING_IS_FULL: ; set the carry if the ring buffer in IY is full
     OR A ; clear carry
     SBC HL, DE
     JP Z, .fullBuffer
-    LD DE, (IY + RING_BUFFER.BUFFER_SIZE)
+    LD DE, (IY + RING_BUFFER.RINGBUFFER_SIZE)
     SBC HL, DE
     JP Z, .fullBuffer
     OR A
@@ -197,8 +197,8 @@ PREP_BUFFER: ; fill the buffer data in IY with value in reg D
     PUSH BC
     PUSH DE
     PUSH HL
-    LD BC, (IY + RING_BUFFER.BUFFER_SIZE)
-    LD HL, (IY + RING_BUFFER.BUFFER_ADDRESS)
+    LD BC, (IY + RING_BUFFER.RINGBUFFER_SIZE)
+    LD HL, (IY + RING_BUFFER.RINGBUFFER_ADDRESS)
 .prepLoop:
     LD A, D
     LD (HL), A

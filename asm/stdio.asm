@@ -44,7 +44,7 @@ DELETE EQU 0x7F
     include "vdp_core.asm"
     include "keyboard.asm"
 
-PUTC: ; Output character in A to standard output at (HL) to standard output
+PutC: ; Output character in A to standard output at (HL) to standard output
     PUSH AF
     PUSH BC
     LD B, A ; switch B and A as we work on A for stream_select comparison
@@ -61,7 +61,7 @@ PUTC: ; Output character in A to standard output at (HL) to standard output
     POP AF
     RET
 
-PUTS: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
+PutS: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
     PUSH AF
     LD A, (STREAM_SELECT)
     AND STREAM_OUT_SERIAL
@@ -75,7 +75,7 @@ PUTS: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
     POP AF
     RET
 
-GETC: ; Input in A from standard input
+GetC: ; Input in A from standard input
     LD A, (STREAM_SELECT)
     AND STREAM_IN_SERIAL
     CALL NZ, SIO_GETC
@@ -173,14 +173,14 @@ VIDEO_PUTC: ; char to print in B, at (HL)
     JP Z, .goDown
     CP CUR_RIGHT
     JP Z, .goRight
-    CALL WRITE_RAM
+    CALL Write_RAM
     INC HL
     RET
 .backSpace:
     PUSH AF
     DEC HL
     LD A, ' '
-    CALL WRITE_RAM
+    CALL Write_RAM
     POP AF
     RET
 .horizontalTab:
@@ -195,7 +195,7 @@ VIDEO_PUTC: ; char to print in B, at (HL)
     INC A
     LD B, A ; number of space to add
     LD A , ' '
-    CALL WRITE_RAM
+    CALL Write_RAM
 .tabLoop:
     OUT (VRAM_DATA), A
     INC HL

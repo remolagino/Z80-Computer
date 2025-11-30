@@ -6,8 +6,8 @@
 
 KEYBOARD_COLUMNS EQU 13 ; number of columns
 KEYBOARD_ROWS EQU 0x04 ; number of rows
-KEYBOARD_CONTROL_ROWS EQU 13 ; control key column (enter, bs, del, inser, up, down, left, right)
-KEYBOARD_MODIFIERS EQU 14 ; modifiers column (shift, control, alt)
+KEYBOARD_CONTROL_COL EQU 13 ; control key column (enter, bs, del, inser, up, down, left, right)
+KEYBOARD_MODIFIERS_COL EQU 14 ; modifiers column (shift, control, alt)
 
 KBD_INSERT EQU 0x05
 KBD_BKSP EQU 0x08
@@ -26,14 +26,15 @@ CTRL EQU 0x22
 ALT EQU 0x44
 
 
-CTRL_KEYS:
-    DB KBD_DELETE, KBD_ENTER, 0x00, 0x00
+
+CTRL_KEYS_MATRIX:
+    DB KBD_DELETE, KBD_ENTER, 'I', 'D'
     DB KBD_UP, KBD__LEFT, KBD__DOWN, KBD__RIGHT
 
  
 SHIFT_MATRIX: ; organised by columns
     DB 0x00, KBD_TAB, KBD_CAPSLOCK, 0x00
-    DB '1', 'A', 'Q', '<'
+    DB '1', 'A', 'Q', '>'
     DB '2', 'Z', 'S', 'W'
     DB '3', 'E', 'D', 'X'
     DB '4', 'R', 'F', 'C'
@@ -59,22 +60,22 @@ DECODE_MATRIX: ; organised by columns
     DB 'ç', 'o', 'l', ','
     DB 'à', 'p', 'm', ';'
     DB ')', '^', 'ù', ':'
-    DB '=', 'e', '*', '!'
+    DB '=', '$', '*', '!'
 
 CTRL_MATRIX: ; organised by columns
     DB 0x00, KBD_TAB, KBD_CAPSLOCK, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, ' '
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00
+    DB '1', 0x82, 0x86, '>'
+    DB '2', 0x88, 0x8A, 0x84
+    DB '3', 0x83, 0x87, 0x89
+    DB '4', 'R', 'F', 0x85
+    DB '5', 'T', 'G', 'V'
+    DB '6', 'Y', 'H', 'B'
+    DB '7', 'U', 'J', ' '
+    DB '8', 'I', 'K', 'N'
+    DB '9', 'O', 'L', '?'
+    DB '0', 'P', 'M', '.'
+    DB '°', '¨', '%', '/'
+    DB '+', '£', 'µ', '§'
 
 ALT_MATRIX: ; organised by columns
     DB 0x00, KBD_TAB, KBD_CAPSLOCK, 0x00
