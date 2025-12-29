@@ -8,17 +8,17 @@ STREAM_OUT_PRINTER EQU 0x04
 STREAM_IN_SERIAL EQU 0x10
 STREAM_IN_KEYBOARD EQU 0x20
 
-INSERT EQU 0x05
-BS EQU 0x08
-HTAB EQU 0x09
-LF EQU 0x0A
-CR EQU 0x0D
-CUR_UP EQU 0x11
-CUR_LEFT EQU 0x12
-CUR_DOWN EQU 0x13
-CUR_RIGHT EQU 0x14
-ESC EQU 0x1B
-DELETE EQU 0x7F
+; INSERT EQU 0x05
+; BS EQU 0x08
+; HTAB EQU 0x09
+LF_KEY_CODE EQU 0x0A
+CR_KEY_CODE EQU 0x0D
+; CUR_UP EQU 0x11
+; CUR_LEFT EQU 0x12
+; CUR_DOWN EQU 0x13
+; CUR_RIGHT EQU 0x14
+;ESC_KEY_CODE EQU 0x1B
+; DELETE EQU 0x7F
 
     MACRO LONG_NOP
     NOP
@@ -53,7 +53,7 @@ PutC: ; Output character in A to standard output at (HL) to standard output
     CALL NZ, SIO_PUTC
     LD A, (STREAM_SELECT)
     AND STREAM_OUT_VDP
-    CALL NZ, VIDEO_PUTC
+    CALL NZ, VDP_PUTC
     LD A, (STREAM_SELECT)
     AND STREAM_OUT_PRINTER
     CALL NZ, PRINTER_PUTC
@@ -68,10 +68,24 @@ PutS: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
     CALL NZ, SIO_PUTS
     LD A, (STREAM_SELECT)
     AND STREAM_OUT_VDP
-    CALL NZ, VIDEO_PUTS
+    CALL NZ, VDP_PUTS
     LD A, (STREAM_SELECT)
     AND STREAM_OUT_PRINTER
     CALL NZ, PRINTER_PUTS
+    POP AF
+    RET
+
+PutS_LN: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
+    PUSH AF
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_SERIAL
+    CALL NZ, SIO_PUTS_LN
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_VDP
+    CALL NZ, VDP_PUTS_LN
+    LD A, (STREAM_SELECT)
+    AND STREAM_OUT_PRINTER
+    CALL NZ, PRINTER_PUTS_LN
     POP AF
     RET
 
@@ -90,39 +104,39 @@ GetC: ; Input in A from standard input
 SIO_PUTC: ; char to print in B
     LD A, B
 ;    CALL HEX2STR
-    CP BS
+    CP BKSP_KEY_CODE
     JP Z, .backSpace
-    CP LF
-    JP Z, .lineFeed
-    CP CR
-    JP Z, .chariotReturn
-    CP CUR_UP
+;    CP LF
+;    JP Z, .lineFeed
+;    CP CR
+;    JP Z, .chariotReturn
+    CP UP_KEY_CODE
     JP Z, .goUp
-    CP CUR_LEFT
+    CP LEFT_KEY_CODE
     JP Z, .goLeft
-    CP CUR_DOWN
+    CP DOWN_KEY_CODE
     JP Z, .goDown
-    CP CUR_RIGHT
+    CP RIGHT_KEY_CODE
     JP Z, .goRight
 
     CALL SENDCHAR_A
     RET
 .backSpace:
-    LD A, BS
+    LD A, BKSP_KEY_CODE
     CALL SENDCHAR_A
     LD A, ' '
     CALL SENDCHAR_A
-    LD A, BS
+    LD A, BKSP_KEY_CODE
     CALL SENDCHAR_A
     RET
-.lineFeed:
-    CALL SENDCHAR_A
-    RET
-.chariotReturn:
-    CALL SENDCHAR_A
-    RET
+; .lineFeed:
+;     CALL SENDCHAR_A
+;     RET
+; .chariotReturn:
+;     CALL SENDCHAR_A
+;     RET
 .goUp:
-    LD A, ESC
+    LD A, ESC_KEY_CODE
     CALL SENDCHAR_A
     LD A, '['
     CALL SENDCHAR_A
@@ -130,7 +144,7 @@ SIO_PUTC: ; char to print in B
     CALL SENDCHAR_A
     RET
 .goLeft:
-    LD A, ESC
+    LD A, ESC_KEY_CODE
     CALL SENDCHAR_A
     LD A, '['
     CALL SENDCHAR_A
@@ -138,7 +152,7 @@ SIO_PUTC: ; char to print in B
     CALL SENDCHAR_A
     RET
 .goDown:
-    LD A, ESC
+    LD A, ESC_KEY_CODE
     CALL SENDCHAR_A
     LD A, '['
     CALL SENDCHAR_A
@@ -146,7 +160,7 @@ SIO_PUTC: ; char to print in B
     CALL SENDCHAR_A
     RET
 .goRight:
-    LD A, ESC
+    LD A, ESC_KEY_CODE
     CALL SENDCHAR_A
     LD A, '['
     CALL SENDCHAR_A
@@ -155,32 +169,32 @@ SIO_PUTC: ; char to print in B
     RET
 
 
-VIDEO_PUTC: ; char to print in B, at (HL)
+VDP_PUTC: ; char to print in B, at (HL)
     LD A, B
-    CP BS
+    CP BKSP_KEY_CODE
     JP Z, .backSpace
-    CP HTAB
+    CP TAB_KEY_CODE
     JP Z, .horizontalTab
-    CP LF
+    CP LF_KEY_CODE
     JP Z, .LineFeed
-    CP CR
+    CP CR_KEY_CODE
     JP Z, .chariotReturn
-    CP CUR_UP
+    CP UP_KEY_CODE
     JP Z, .goUp
-    CP CUR_LEFT
+    CP LEFT_KEY_CODE
     JP Z, .goLeft
-    CP CUR_DOWN
+    CP DOWN_KEY_CODE
     JP Z, .goDown
-    CP CUR_RIGHT
+    CP RIGHT_KEY_CODE
     JP Z, .goRight
-    CALL Write_RAM
+    CALL putC_VRAM
     INC HL
     RET
 .backSpace:
     PUSH AF
     DEC HL
     LD A, ' '
-    CALL Write_RAM
+    CALL putC_VRAM
     POP AF
     RET
 .horizontalTab:
@@ -195,7 +209,7 @@ VIDEO_PUTC: ; char to print in B, at (HL)
     INC A
     LD B, A ; number of space to add
     LD A , ' '
-    CALL Write_RAM
+    CALL putC_VRAM
 .tabLoop:
     OUT (VRAM_DATA), A
     INC HL
@@ -306,6 +320,27 @@ VIDEO_PUTC: ; char to print in B, at (HL)
 PRINTER_PUTC:
     RET
 
+SIO_PUTS_LN: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
+    PUSH DE
+    PUSH HL
+    LD HL, DE
+.loop:
+    LD A, (HL)
+    OR A
+    JP Z, .end
+    LD B, A
+    CALL SIO_PUTC ;
+    INC HL
+    JP .loop ; Continue printing the string
+.end:
+    LD B, CR_KEY_CODE
+    CALL SIO_PUTC ;
+    LD B, LF_KEY_CODE
+    CALL SIO_PUTC ;
+    POP HL
+    POP DE
+    RET
+
 SIO_PUTS: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
     PUSH DE
     PUSH HL
@@ -319,15 +354,11 @@ SIO_PUTS: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
     INC HL
     JP .loop ; Continue printing the string
 .end:
-    LD B, CR
-    CALL SIO_PUTC ;
-    LD B, LF
-    CALL SIO_PUTC ;
     POP HL
     POP DE
     RET
 
-VIDEO_PUTS:
+VDP_PUTS_LN:
     PUSH AF
     PUSH DE
 .putsLoop:
@@ -335,19 +366,37 @@ VIDEO_PUTS:
     CP 0x00
     JP Z, .exit
     LD B, A
-    CALL VIDEO_PUTC
+    CALL VDP_PUTC
     INC DE
     ; INC HL
     JP .putsLoop   
 .exit:
-    LD B, CR
-    CALL VIDEO_PUTC ;
-    LD B, LF
-    CALL VIDEO_PUTC ;
+    LD B, CR_KEY_CODE
+    CALL VDP_PUTC ;
+    LD B, LF_KEY_CODE
+    CALL VDP_PUTC ;
     POP DE
     POP AF
     RET
 
+VDP_PUTS:
+    PUSH AF
+    PUSH DE
+.putsLoop:
+    LD A, (DE)
+    CP 0x00
+    JP Z, .exit
+    LD B, A
+    CALL VDP_PUTC
+    INC DE
+    ; INC HL
+    JP .putsLoop   
+.exit:
+    POP DE
+    POP AF
+    RET
+
+PRINTER_PUTS_LN:
 PRINTER_PUTS:
     RET
 
@@ -355,7 +404,7 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
 ;    CALL SendChar_A
     CALL ReceiveCharNB_A
     ; transform escaped sequence
-    CP ESC
+    CP ESC_KEY_CODE
     JP Z, .escape
     CP 0x7F
     RET NZ
@@ -388,16 +437,16 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     LD A, '?'
     RET
 .up:
-    LD A, CUR_UP
+    LD A, UP_KEY_CODE
     RET
 .down:
-    LD A, CUR_DOWN
+    LD A, DOWN_KEY_CODE
     RET
 .right:
-    LD A, CUR_RIGHT
+    LD A, RIGHT_KEY_CODE
     RET
 .left:
-    LD A, CUR_LEFT
+    LD A, LEFT_KEY_CODE
     RET
 .insert:
     CALL ReceiveChar_A
@@ -406,7 +455,7 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     LD A, '?'
     RET
 .send_insert:
-    LD A, INSERT
+    LD A, INSERT_KEY_CODE
     RET
 .delete:
     CALL ReceiveChar_A
@@ -415,7 +464,7 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     LD A, '?'
     RET
 .send_delete:
-    LD A, DELETE
+    LD A, DELETE_KEY_CODE
     RET
 
 ; HAT EQU 0x01

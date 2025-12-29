@@ -2,11 +2,12 @@
     DEFINE __STRING__ 1
 
     INCLUDE "serial.asm"
-
+    include "stdio.asm"
+    
 HEX_HEADER_STRING:
     DB "        0  1  2  3  4  5  6  7   8  9  A  B  C  D  E  F", 0x00    
 ;    DB "        0  1  2  3  4  5  6  7   8  9  A  B  C  D  E  F",0x0D,0x0A,0x00    
-CR_LF:
+STRING_CR_LF:
     DB 0x0A, 0x0D, 0x00 ; Carriage return + line feed
 
 
@@ -43,7 +44,8 @@ Hex2Str: ; display a number in hex format (number in A)
 .hexDigit:  
     ADD A, 0x37 ; Convert to ASCII 'A' - 'F'
 .printAndNextNible:
-    CALL SendChar_A ; Send the character to the SIO port A
+;    CALL SendChar_A ; Send the character to the SIO port A
+    CALL PutC ; Send the character to the SIO port A
     POP AF ; Restore the original value in A
     PUSH AF
     AND 0x0F ; Get the low nibble
@@ -54,7 +56,8 @@ Hex2Str: ; display a number in hex format (number in A)
 .hexDigit2:  
     ADD A, 0x37 ; Convert to ASCII 'A' - 'F'
 .printAndNextNible2: 
-    CALL SendChar_A ; Send the character to the SIO port A
+;   CALL SendChar_A ; Send the character to the SIO port A
+   CALL PutC ; Send the character to the SIO port A
     POP AF
     RET
 
@@ -66,7 +69,7 @@ PrintHex: ;Print memory in hex format (address in HL, always 16 x16 bytes)
     PUSH HL
     LD HL, HEX_HEADER_STRING ; Load the header string address
     CALL PrintString ; Print the header string
-    LD HL, CR_LF ; Load the header string address
+    LD HL, STRING_CR_LF ; Load the header string address
     CALL PrintString ; Print the header string
     POP HL
     LD A, L
@@ -122,7 +125,7 @@ PrintHex: ;Print memory in hex format (address in HL, always 16 x16 bytes)
     INC HL ; Increment address
     DJNZ .printCharLoop ; Loop for 16 bytes
     PUSH HL
-    LD HL, CR_LF 
+    LD HL, STRING_CR_LF 
     CALL PrintString
     POP HL
     DEC C ; Decrement row counter
@@ -196,7 +199,7 @@ PrintHex_OneRow: ;Print 16 Bytes in hex format (address in HL - number in D)
 .printCharEnd:
     INC HL ; Increment address
     DJNZ .printCharLoop ; Loop for 16 bytes
-    LD HL, CR_LF 
+    LD HL, STRING_CR_LF 
     CALL PrintString
     POP HL
     POP DE

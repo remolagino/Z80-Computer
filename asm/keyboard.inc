@@ -9,17 +9,17 @@ KEYBOARD_ROWS EQU 0x04 ; number of rows
 KEYBOARD_CONTROL_COL EQU 13 ; control key column (enter, bs, del, inser, up, down, left, right)
 KEYBOARD_MODIFIERS_COL EQU 14 ; modifiers column (shift, control, alt)
 
-KBD_INSERT EQU 0x05
-KBD_BKSP EQU 0x08
-KBD_TAB EQU 0x09
-KBD_ENTER EQU 0x0D
-KBD_CAPSLOCK EQU 0x0E
-KBD_UP EQU 0x11
-KBD__LEFT EQU 0x12
-KBD__DOWN EQU 0x13
-KBD__RIGHT EQU 0x14
-KBD_ESC EQU 0x1B
-KBD_DELETE EQU 0x7F
+INSERT_KEY_CODE EQU 0x05
+BKSP_KEY_CODE EQU 0x08
+TAB_KEY_CODE EQU 0x09
+ENTER_KEY_CODE EQU 0x0D
+CAPSLOCK_KEY_CODE EQU 0x0E
+UP_KEY_CODE EQU 0x11
+LEFT_KEY_CODE EQU 0x12
+DOWN_KEY_CODE EQU 0x13
+RIGHT_KEY_CODE EQU 0x14
+ESC_KEY_CODE EQU 0x1B
+DELETE_KEY_CODE EQU 0x7F
 
 SHIFT EQU 0x11
 CTRL EQU 0x22
@@ -28,12 +28,12 @@ ALT EQU 0x44
 
 
 CTRL_KEYS_MATRIX:
-    DB KBD_DELETE, KBD_ENTER, 'I', 'D'
-    DB KBD_UP, KBD__LEFT, KBD__DOWN, KBD__RIGHT
+    DB BKSP_KEY_CODE, ENTER_KEY_CODE, INSERT_KEY_CODE, DELETE_KEY_CODE
+    DB UP_KEY_CODE, LEFT_KEY_CODE, DOWN_KEY_CODE, RIGHT_KEY_CODE
 
  
 SHIFT_MATRIX: ; organised by columns
-    DB 0x00, KBD_TAB, KBD_CAPSLOCK, 0x00
+    DB 0x00, TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
     DB '1', 'A', 'Q', '>'
     DB '2', 'Z', 'S', 'W'
     DB '3', 'E', 'D', 'X'
@@ -48,7 +48,7 @@ SHIFT_MATRIX: ; organised by columns
     DB '+', '£', 'µ', '§'
 
 DECODE_MATRIX: ; organised by columns
-    DB '²', KBD_TAB, KBD_CAPSLOCK, 0x00
+    DB '²', TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
     DB '&', 'a', 'q', '<'
     DB 'é', 'z', 's', 'w'
     DB '"', 'e', 'd', 'x'
@@ -63,22 +63,22 @@ DECODE_MATRIX: ; organised by columns
     DB '=', '$', '*', '!'
 
 CTRL_MATRIX: ; organised by columns
-    DB 0x00, KBD_TAB, KBD_CAPSLOCK, 0x00
+    DB 0x00, TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
     DB '1', 0x82, 0x86, '>'
     DB '2', 0x88, 0x8A, 0x84
     DB '3', 0x83, 0x87, 0x89
-    DB '4', 'R', 'F', 0x85
+    DB '4', 0x80, 0x81, 0x85
     DB '5', 'T', 'G', 'V'
     DB '6', 'Y', 'H', 'B'
     DB '7', 'U', 'J', ' '
     DB '8', 'I', 'K', 'N'
     DB '9', 'O', 'L', '?'
     DB '0', 'P', 'M', '.'
-    DB '°', '¨', '%', '/'
+    DB '°', '¨', 0xDF, '/'
     DB '+', '£', 'µ', '§'
 
 ALT_MATRIX: ; organised by columns
-    DB 0x00, KBD_TAB, KBD_CAPSLOCK, 0x00
+    DB 0x00, TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
     DB 0x00, 0x00, 0x00, 0x00
     DB '~', 0x00, 0x00, 0x00
     DB '#', '¤', 0x00, 0x00

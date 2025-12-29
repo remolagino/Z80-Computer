@@ -99,7 +99,7 @@ Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C val
     RET
 
 
-Write_RAM: ; write at adress HL in Pattern layout table the character in reg A
+putC_VRAM: ; write at adress HL in Pattern layout table the character in reg A
     PUSH AF
     PUSH DE
     PUSH HL

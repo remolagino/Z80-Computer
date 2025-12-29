@@ -27,7 +27,8 @@ Main:
     LD HL, CR_LF
     CALL PRINT_STRING
 ; STREAM_IN_KEYBOARD|
-    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
+ ;   LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
+    LD A, STREAM_OUT_VDP|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
     LD (STREAM_SELECT), A
     LD HL, STREAM_MSG
     CALL PRINT_STRING
@@ -42,16 +43,19 @@ Main:
     CALL INIT_PATTERN_LAYOUT_TABLE
     CALL INIT_COLOR_TABLE
 
-    LD HL, 320
-    LD DE, MEASURE_MSG
-    CALL PutS
+    ; LD HL, 320
+    ; LD DE, MEASURE_MSG
+    ; CALL PutS
 
-    LD DE, TEST_MSG
-    CALL PutS
+    ; LD DE, TEST_MSG
+    ; CALL PutS
 
-    CALL LineEdit_Init
-    LD DE, EDIT_BUFFER_ADDRESS
-    CALL PutS
+    CALL Keyboard_Init
+
+    ; CALL LineEdit_Init
+    ; LD DE, EDIT_BUFFER_ADDRESS
+    LD HL, 0x0000
+    ; CALL PutS
 
     LD B, 0
     LD (CURSOR_IDX), HL ; put the cursor at 0
@@ -74,11 +78,11 @@ Main:
     ; JP Z, .screenHorizontal
     ; CP '5'
     ; JP Z, .rotateColor
-    CP CR      ; Enter key
+    CP CR_KEY_CODE      ; Enter key
     JP Z, .enterKey
-    CP DELETE
+    CP DELETE_KEY_CODE
     JP Z, .delete
-    CP INSERT
+    CP INSERT_KEY_CODE
     JP Z, .insert
 
     LD HL, (CURSOR_IDX)
@@ -94,7 +98,7 @@ Main:
     LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL Set_Blink ; unset blink at current position
-    LD A, BS
+    LD A, BKSP_KEY_CODE
     CALL PutC
     LD (CURSOR_IDX), HL
     LD C, 0x01
@@ -102,23 +106,29 @@ Main:
     JP .eventLoop
 
 .insert:
-    LD HL, (CURSOR_IDX)
-    LD C, 0x00
-    CALL Set_Blink ; unset blink at current position
-    LD A,'¤'
-    CALL PutC
-    LD (CURSOR_IDX), HL
-    LD C, 0x01
-    CALL Set_Blink ; set blink at new position
+    ; LD HL, (CURSOR_IDX)
+    ; LD C, 0x00
+    ; CALL Set_Blink ; unset blink at current position
+    ; LD A,'¤'
+    ; CALL PutC
+    ; LD (CURSOR_IDX), HL
+    ; LD C, 0x01
+    ; CALL Set_Blink ; set blink at new position
+    LD HL, 80*23
+    CALL LineEdit
+
+    LD HL, 80*5
+    LD DE, LINE_EDIT_BUFFER_ADDRESS
+    CALL PutS_LN
     JP .eventLoop
 
 .enterKey:
     LD HL, (CURSOR_IDX)
     LD C, 0x00
     CALL Set_Blink ; unset blink at current position
-    LD A, LF
+    LD A, LF_KEY_CODE
     CALL PutC
-    LD A, CR
+    LD A, CR_KEY_CODE
     CALL PutC
     LD (CURSOR_IDX), HL
     LD C, 0x01
@@ -224,18 +234,18 @@ INIT_COLOR_TABLE: ; write at adress 0x0000
 
 
 CR_LF:
-    DB CR, LF, 0x00 ; Carriage return + line feed
+    DB CR_KEY_CODE, LF_KEY_CODE, 0x00 ; Carriage return + line feed
 
-PRESSED_MSG:
-    DB 'Key Pressed : ', 0x00
-RELEASED_MSG:
-    DB 'Key Released : ', 0x00
+; PRESSED_MSG:
+;     DB 'Key Pressed : ', 0x00
+; RELEASED_MSG:
+;     DB 'Key Released : ', 0x00
 STREAM_MSG:
     DB "Stream Selected : ", 0x00
-TEST_MSG:
-    DB HTAB, HTAB, "This.is.a.test message.!!", CR, LF,  "Prout", CUR_UP, CUR_LEFT, CUR_LEFT, "prout !", 0x00
-MEASURE_MSG:
-    DB "01234567012345670123456701234567012345670123456701234567", 0x00
+; TEST_MSG:
+;     DB TAB_KEY_CODE, TAB_KEY_CODE, "This.is.a.test message.!!", CR_KEY_CODE, LF_KEY_CODE,  "Prout", UP_KEY_CODE, LEFT_KEY_CODE, LEFT_KEY_CODE, "prout !", 0x00
+; MEASURE_MSG:
+;     DB "01234567012345670123456701234567012345670123456701234567", 0x00
 
 SCREEN_OFFSET:
     DB 0x00

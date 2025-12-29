@@ -22,6 +22,12 @@ KEYBOARD_BUFFER_SIZE EQU 0x09 ; buffer length for keys
     include "keyboard.inc"
  ;   include "keypad.inc"
 
+Keyboard_Init:
+    LD A, 0x00
+    LD (KEYBOARD_CAPSLOCK_STATUS), A
+    RET
+
+
 Keyboard_Scan: ; Scan the keypad columns
     PUSH AF
     PUSH BC
@@ -73,19 +79,22 @@ Keyboard_Scan: ; Scan the keypad columns
     JP NZ, .colLoop ; If not, continue scanning
 
 ; Read the Control Key column
+; Why the specific process for them : because there are 8 keys in this column 
+; but only 5 keys in the other columns. So either we handle them separately
+; or we add 3 dummy rows in the other columns (wasting 3x15 process loop)
     LD IX, CTRL_KEYS_MATRIX ; Pointer to control keys Columns data
     IN A, (KEYBOARD_IO_ADDRESS + KEYBOARD_CONTROL_COL)
     LD B, 8 ; Number of modifier keys to scan (8 bits)
 .controlRowLoop:
     PUSH AF
     BIT 0, A ; Check if the bit is Set
-    JP Z, .ctrlNotPressed ; If not pressed, skip to next bit
+    JP Z, .ctrlRowNotPressed ; If not pressed, skip to next bit
     ;The button is pressed
-.ctrlPressed:
+.ctrlRowPressed:
     LD A, (DE)
     OR A ; check if the state is already set
     ;The button was not already pressed
-    JP NZ, .ctrlContinue
+    JP NZ, .ctrlRowContinue
     PUSH IY
     LD  IY, KBD_RING_BUFFER
     LD A, (IX)
@@ -93,17 +102,17 @@ Keyboard_Scan: ; Scan the keypad columns
     POP IY
     LD A, 0x40 ; set the key as pressed; debounce counter
     LD (DE), A
-    JP .ctrlContinue
-.ctrlNotPressed:
+    JP .ctrlRowContinue
+.ctrlRowNotPressed:
     LD A, (DE) 
     OR A; check if the key was released
-    JP Z, .ctrlContinue 
+    JP Z, .ctrlRowContinue 
 ;    CP 0x01
 ;    CALL Z, OnKeyReleased
     LD A, (DE)
     DEC A ; decrement the debounce counter
     LD (DE), A
-.ctrlContinue:
+.ctrlRowContinue:
     POP AF
     SRL A ; Shift right to check next bit
     INC IX ; Move to next row data
@@ -122,6 +131,15 @@ OnKeyPressed:
     PUSH AF
     PUSH BC
     PUSH IY
+; check for capslock key <<NOT IDEAL but quick and easy>>
+    LD A, (IX)
+    CP CAPSLOCK_KEY_CODE
+    JP NZ, .notCapslock
+    LD A, (KEYBOARD_CAPSLOCK_STATUS)
+    XOR 0x01
+    LD (KEYBOARD_CAPSLOCK_STATUS), A
+    JP .exit_NoRing
+.notCapslock:
     LD IY, KBD_RING_BUFFER
     LD A, (KEYBOARD_MODIFIERS)
     LD B, A
@@ -133,11 +151,23 @@ OnKeyPressed:
     LD A, B
     AND ALT ; test for ALT
     JP NZ, .altMatrix
-; no modifier key
+.decodeMatrix: ; no modifiers
+    LD A, (KEYBOARD_CAPSLOCK_STATUS)
+    OR A
+    JP NZ, .decodeMatrix_capslock
     LD A, (IX)
     JP .exit
+.decodeMatrix_capslock:    
+    LD A, (IX + SHIFT_MATRIX - DECODE_MATRIX)
+    JP .exit
 .shiftMatrix:
+    LD A, (KEYBOARD_CAPSLOCK_STATUS)
+    OR A
+    JP NZ, .shiftMatrix_capslock
     LD A, (IX + SHIFT_MATRIX -DECODE_MATRIX )
+    JP .exit
+.shiftMatrix_capslock:
+    LD A, (IX)
     JP .exit
 .ctrlMatrix:
     LD A, (IX + CTRL_MATRIX - DECODE_MATRIX)
@@ -147,6 +177,7 @@ OnKeyPressed:
     JP .exit
 .exit:   
     CALL RING_PUT
+.exit_NoRing:
     POP IY
     POP BC
     POP AF
