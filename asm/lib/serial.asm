@@ -143,9 +143,9 @@ PrintString: ; Print a message (0 terminated string, address in HL)
 
 
 SendChar_HL: ; Send a character in (HL) to the SIO port A
+  PUSH AF
 .wait:
  ; Select Register 0 (status register) for SIO Port A
-
     LD A, 0       ; Register 0
     OUT (SIO_CTRL_A), A ; Write to control port A to select reg 0
     IN A, (SIO_CTRL_A)
@@ -153,13 +153,13 @@ SendChar_HL: ; Send a character in (HL) to the SIO port A
     JR Z, .wait
     LD A, (HL)
     OUT (SIO_DATA_A), A
-
+    POP AF
     RET
 
 SendCharB_HL: ; Send a character in (HL) to the SIO port B
+    PUSH AF
 .wait:
  ; Select Register 0 (status register) for SIO Port A
-
     LD A, 0       ; Register 0
     OUT (SIO_CTRL_B), A ; Write to control port A to select reg 0
     IN A, (SIO_CTRL_B)
@@ -167,10 +167,11 @@ SendCharB_HL: ; Send a character in (HL) to the SIO port B
     JR Z, .wait
     LD A, (HL)
     OUT (SIO_DATA_B), A
-
+    POP AF
     RET
 
 SendChar_IX: ; Send a character in (IX) to the SIO port A
+    PUSH AF
 .wait:
  ; Select Register 0 (status register) for SIO Port A
     LD A, 0       ; Register 0
@@ -180,7 +181,7 @@ SendChar_IX: ; Send a character in (IX) to the SIO port A
     JR Z, .wait
     LD A, (IX)
     OUT (SIO_DATA_A), A
-
+    POP AF
     RET
 
 SendChar_A: ; Send a character in A to the SIO port A

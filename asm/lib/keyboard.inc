@@ -5,7 +5,7 @@
     DEFINE __KEYBOARD_INC__ 1
 
 KEYBOARD_COLUMNS EQU 13 ; number of columns
-KEYBOARD_ROWS EQU 0x04 ; number of rows
+KEYBOARD_ROWS EQU 4 ; number of rows
 KEYBOARD_CONTROL_COL EQU 13 ; control key column (enter, bs, del, inser, up, down, left, right)
 KEYBOARD_MODIFIERS_COL EQU 14 ; modifiers column (shift, control, alt)
 

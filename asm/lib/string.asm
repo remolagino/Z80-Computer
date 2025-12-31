@@ -32,8 +32,8 @@ StringLength: ; Calculate the length of the string in HL, return in A
 
 ; ------------------------------------------------------------
 Hex2Str: ; display a number in hex format (number in A, result in HL)
-    PUSH AF
     PUSH HL
+    PUSH AF
     SRL A ; Shift right to get the high nibble
     SRL A
     SRL A 
@@ -62,8 +62,10 @@ Hex2Str: ; display a number in hex format (number in A, result in HL)
 ;   CALL SendChar_A ; Send the character to the SIO port A
 ;    CALL PutC ; Send the character to the SIO port A
     LD (HL), A
-    POP HL
+    INC HL
+    LD (HL), 0x00 ; Null terminator
     POP AF
+    POP HL
     RET
 
 PrintHex: ;Print memory in hex format (address in HL, always 16 x16 bytes)

@@ -21,11 +21,23 @@ RINGBUFFER_ADDRESS WORD RINGBUFFER_DEFAULTADDRESS
 
 
 INIT_BUFFER: ; Initialised Ring Buffer at IY, capacity in BC, buffer address in DE
-    LD (IY + RING_BUFFER.HEAD_PTR), 0x0000
-    LD (IY + RING_BUFFER.TAIL_PTR), 0x0000
+    LD (IY + RING_BUFFER.HEAD_PTR), 0x00
+    LD (IY + RING_BUFFER.HEAD_PTR+1), 0x00
+    LD (IY + RING_BUFFER.TAIL_PTR), 0x00
+    LD (IY + RING_BUFFER.TAIL_PTR+1), 0x00
     LD (IY + RING_BUFFER.RINGBUFFER_SIZE), BC
     LD (IY + RING_BUFFER.RINGBUFFER_ADDRESS), DE
 
+;     PUSH BC
+;     PUSH DE
+;     LD B, C
+; .InitBufferLoop:
+;     LD A, B
+;     LD (DE), A
+;     INC DE
+;     DJNZ .InitBufferLoop
+;     POP DE
+;     POP BC
     RET
 
 RING_PUT: ; Write reg A in ring buffer at address IY, carry flag is set if buffer full

@@ -166,12 +166,12 @@ VDP_INIT:
     LD      A, 0xF4         ; Text color: white (F) on blue (4)
     CALL    WRITE_REG
 
-    ; R#12: Text blink rate and color
+    ; R#12: Text blink color
     LD C, 12
     LD A, 0x4F
     CALL WRITE_REG
 
-    ; R#13: Blink period
+    ; R#13: Blink rate
     LD C, 13  
     LD A, 0x23
     CALL WRITE_REG
@@ -432,7 +432,7 @@ Msg_VDP_T2_Init:
 Msg_VDP_Pattern_Generator_Init:
     DB "V9938 - Pattern Generator Initialised", 0x0D, 0x0A,0x00 
 Msg_VDP_Pattern_Layout_Init:
-    DB "V9938 - ColorMap Initialised", 0x0D, 0x0A,0x00 
+    DB "V9938 - Pattern Layout Initialised", 0x0D, 0x0A,0x00 
 Msg_VDP_ColorMap_Init:
     DB "V9938 - ColorMap Initialised", 0x0D, 0x0A,0x00 
 

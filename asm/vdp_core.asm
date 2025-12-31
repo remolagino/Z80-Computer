@@ -13,6 +13,9 @@ VDP_REG_SETUP EQU   0x41            ; PORT #1 - Register Setup
 VDP_PAL_REG   EQU   0x42            ; PORT #2 - Palette Register port
 VDP_REG_INDIR EQU   0x43            ; PORT #3 - Register Indirect Addressing 
 
+VRAM_READ_MODE EQU 0x00
+VRAM_WRITE_MODE EQU 0x40
+
 COLOR_TABLE_BASE_ADDR EQU 0x0A00 ; Base address of color table in VRAM
 PATTERN_LAYOUT_TABLE_BASE_ADDR EQU 0x0000 ; Base address of pattern name table in VRAM
 
@@ -20,14 +23,12 @@ PATTERN_LAYOUT_TABLE_BASE_ADDR EQU 0x0000 ; Base address of pattern name table i
 
 Write_Reg: ; REG number in C, Value in A
     PUSH AF
-    ;PUSH BC
     ;DI
     OUT (VDP_REG_SETUP), A
     LD A, C
     OR 0x80
     ;EI
     OUT (VDP_REG_SETUP), A
-    ;POP BC
     POP AF
     RET
 
@@ -38,26 +39,25 @@ Writereg_Indirect: ; REG number in A (add +128 for no auto increment), Values in
     OTIR
     RET
 
-Set_VRAM_Address: ; Set VRAM address from HL
+Set_VRAM_Address: ; Set VRAM address from HL, READ or WRITE mode in A
     PUSH AF
     PUSH BC
     PUSH HL
+    LD B, A ; save read/writemode in B
     LD A, H
     RLCA
     RLCA
     AND 0x03 ; keep only A14 et A15 in the 2 rightmost positions
 
     LD C, 14
-;    LD A, 0x00 ; Set Address A16-A15-A14
     CALL Write_Reg
     LD A, L
-;    LD A, 0x00 ; Set Address A7..A0
-
     OUT (VRAM_ADDR), A
 
     LD A, H
     AND 0x3F ; keep only A13..A8
-    OR 0x40 ; data write mode
+    OR B     ; set read or write mode
+;    OR 0x40 ; data write mode
     OUT (VRAM_ADDR), A
     POP HL
     POP BC
@@ -84,6 +84,7 @@ Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C val
 
     LD DE, COLOR_TABLE_BASE_ADDR
     ADD HL, DE ; compute the address in VRAM of the color byte
+    LD A, VRAM_WRITE_MODE
     CALL Set_VRAM_Address
 
     LD A, C
@@ -106,7 +107,11 @@ putC_VRAM: ; write at adress HL in Pattern layout table the character in reg A
 
     LD DE, PATTERN_LAYOUT_TABLE_BASE_ADDR
     ADD HL, DE ; compute the address in VRAM of the pattern layout position
+
+    PUSH AF
+    LD A, VRAM_WRITE_MODE
     CALL Set_VRAM_Address
+    POP AF
 
     OUT (VRAM_DATA), A
 

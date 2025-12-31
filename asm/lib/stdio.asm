@@ -8,40 +8,15 @@ STREAM_OUT_PRINTER EQU 0x04
 STREAM_IN_SERIAL EQU 0x10
 STREAM_IN_KEYBOARD EQU 0x20
 
-; INSERT EQU 0x05
-; BS EQU 0x08
-; HTAB EQU 0x09
+
 LF_KEY_CODE EQU 0x0A
 CR_KEY_CODE EQU 0x0D
-; CUR_UP EQU 0x11
-; CUR_LEFT EQU 0x12
-; CUR_DOWN EQU 0x13
-; CUR_RIGHT EQU 0x14
-;ESC_KEY_CODE EQU 0x1B
-; DELETE EQU 0x7F
 
-    MACRO LONG_NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    ENDM
 
 ;VRAM_DATA EQU   0x40            ; PORT #0 - VRAM data port
-    include "jumpTable.inc"
+;    include "jumpTable.inc"
     include "serial.asm"
-    include "vdp_core.asm"
+    include "../vdp_core.asm"
     include "keyboard.asm"
 
 PutC: ; Output character in A to standard output at (HL) to standard output
@@ -119,15 +94,15 @@ SIO_PUTC: ; char to print in B
     CP RIGHT_KEY_CODE
     JP Z, .goRight
 
-    CALL SENDCHAR_A
+    CALL SendChar_A
     RET
 .backSpace:
     LD A, BKSP_KEY_CODE
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, ' '
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, BKSP_KEY_CODE
-    CALL SENDCHAR_A
+    CALL SendChar_A
     RET
 ; .lineFeed:
 ;     CALL SENDCHAR_A
@@ -137,35 +112,35 @@ SIO_PUTC: ; char to print in B
 ;     RET
 .goUp:
     LD A, ESC_KEY_CODE
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, '['
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, 'A'
-    CALL SENDCHAR_A
+    CALL SendChar_A
     RET
 .goLeft:
     LD A, ESC_KEY_CODE
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, '['
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, 'D'
-    CALL SENDCHAR_A
+    CALL SendChar_A
     RET
 .goDown:
     LD A, ESC_KEY_CODE
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, '['
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, 'B'
-    CALL SENDCHAR_A
+    CALL SendChar_A
     RET
 .goRight:
     LD A, ESC_KEY_CODE
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, '['
-    CALL SENDCHAR_A
+    CALL SendChar_A
     LD A, 'C'
-    CALL SENDCHAR_A
+    CALL SendChar_A
     RET
 
 
@@ -411,16 +386,12 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
     LD A, 'X'
     RET
 .escape:
-;    LONG_NOP
-;    CALL ReceiveCharNB_A
     CALL ReceiveChar_A
     CP '['
     JP Z, .escapedSequence
-;    SCF
+
     RET
 .escapedSequence:
-;    LONG_NOP
-;    CALL ReceiveCharNB_A
     CALL ReceiveChar_A
     CP 'A'
     JP Z, .up

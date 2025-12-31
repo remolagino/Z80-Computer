@@ -7,24 +7,43 @@
 
  
 KEYBOARD_IO_ADDRESS EQU 0x60 ; Keypad Columns address
-; KEYBOARD_COLUMNS EQU 0x03 ; number of columns
-; KEYBOARD_ROWS EQU 0x05 ; number of rows
-; KEYBOARD_MODIFIERS EQU 0x03 ; modifiers column
-
 KEYBOARD_BUFFER_SIZE EQU 0x09 ; buffer length for keys
 
-; SHIFT EQU 0x01
-; CTRL EQU 0x02
-; ALT EQU 0x08
-
-    include "memoryMapv2.inc"
-    include "ringBuffer.asm"
+     include "ringBuffer.asm"
+   include "keyboard_memoryMap.inc"
     include "keyboard.inc"
- ;   include "keypad.inc"
+
 
 Keyboard_Init:
     LD A, 0x00
     LD (KEYBOARD_CAPSLOCK_STATUS), A
+;niitialize ring buffer
+    PUSH DE
+    PUSH BC
+    PUSH IY
+    LD IY, KBD_RING_BUFFER
+    LD BC, KEYBOARD_BUFFER_SIZE
+    LD DE, KBD_BUFFER_DATA
+    CALL INIT_BUFFER
+    POP IY
+    POP BC
+    POP DE
+;initialize keyboard state buffer
+    PUSH BC
+    PUSH HL
+    LD HL, KEYBOARD_STATE
+    LD BC, KEYBOARD_ROWS * KEYBOARD_COLUMNS + 8 ; +1 for control keys column
+    LD A, 0x00
+.initStateLoop:
+    LD (HL), A
+    INC HL
+    DJNZ .initStateLoop
+;    LD HL, KEYBOARD_STATE
+    ; LD A, 'X'
+    ; LD (KEYBOARD_STATE),A
+    POP HL
+    POP BC
+    
     RET
 
 
@@ -40,7 +59,6 @@ Keyboard_Scan: ; Scan the keypad columns
     LD C, KEYBOARD_IO_ADDRESS
     LD IX, DECODE_MATRIX ; Pointer to rows data
     LD DE, KEYBOARD_STATE
-;    LD HL, KEYPAD_BUFFER ; Pointer to the buffer for keys 
 .colLoop:
     IN A, (C)
     LD B, KEYBOARD_ROWS ; Number of bits to scan (5 bits per column)
@@ -107,8 +125,6 @@ Keyboard_Scan: ; Scan the keypad columns
     LD A, (DE) 
     OR A; check if the key was released
     JP Z, .ctrlRowContinue 
-;    CP 0x01
-;    CALL Z, OnKeyReleased
     LD A, (DE)
     DEC A ; decrement the debounce counter
     LD (DE), A
@@ -202,9 +218,8 @@ Keyboard_UngetKey: ; put char in A back in the ring buffer
     POP IY
     RET 
 
-KBD_RING_BUFFER RING_BUFFER 0x0000, 0x0000, KEYBOARD_BUFFER_SIZE, KBD_BUFFER_DATA
+;KBD_RING_BUFFER RING_BUFFER 0x0000, 0x0000, KEYBOARD_BUFFER_SIZE, KBD_BUFFER_DATA
 
-KBD_BUFFER_DATA:
-    BLOCK KEYBOARD_BUFFER_SIZE, 0x00
+
 
     ENDIF ; __KEYBOARD__

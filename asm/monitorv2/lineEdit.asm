@@ -11,31 +11,13 @@
     DEFINE __LINE_EDIT__ 1
 
     include "memoryMapv2.inc"
-    include "stdio.asm"
-    include "string.asm"
+    include "../lib/stdio.asm"
+    include "../lib/string.asm"
 
-
-; LineEdit_Init: ; zero the buffer
-;     PUSH AF
-;     PUSH BC
-;     PUSH HL
-;     LD HL, LINE_EDIT_BUFFER_ADDRESS
-;     LD B, LINE_EDIT_BUFFER_SIZE+1
-;     LD A, 0x00
-; .initLoop:
-;     LD (HL), A
-;     INC HL
-;     DJNZ .initLoop
-;     ; LD HL, 0x0000
-;     ; LD (LineEdit_CURSOR_IDX), HL ; reset cursor idx
-;     ; LD HL, 80*15
-;     ; LD (LineEdit_LineStart), HL ; reset line start
-;     LD A, 0x00
-;     LD (LINE_EDIT_INSERT_MODE), A ; insert mode off
-;     POP HL
-;     POP BC
-;     POP AF
-;     RET
+LineEdit_Init:
+    LD A, 0x00
+    LD (LINE_EDIT_INSERT_MODE), A ; insert mode off
+    RET
 
 LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     LD (LINE_EDIT_LINESTART), HL
@@ -54,8 +36,7 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     INC HL
     DJNZ .initLoop
     LD A, 0x00
-    LD (LINE_EDIT_INSERT_MODE), A ; insert mode off
-; end of init
+ ; end of init
 
     LD HL, (LINE_EDIT_LINESTART)
     LD DE, MSG_EDITING_EmptyBuffer
@@ -92,6 +73,8 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     JP Z, .leftCursorProcess ; 
     CP RIGHT_KEY_CODE
     JP Z, .rightCursorProcess ; 
+    CP TAB_KEY_CODE
+    JP Z, .tabProcess
     CP BKSP_KEY_CODE
     JP Z, .backspaceProcess ; 
     CP DELETE_KEY_CODE
@@ -109,7 +92,7 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     PUSH DE
     PUSH HL
     LD HL, LINE_EDIT_BUFFER_ADDRESS
-    CALL STRING_LENGTH
+    CALL StringLength
     SUB LINE_EDIT_BUFFER_SIZE
     JP Z, .insertModeBufferFull ; buffer full, do nothing
     LD A, LINE_EDIT_BUFFER_SIZE
@@ -174,6 +157,8 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
 ;    INC HL
     LD A, RIGHT_KEY_CODE
     CALL PutC
+    JP .displayCursor
+.tabProcess:
     JP .displayCursor
 .backspaceProcess:
     LD A, E
@@ -270,77 +255,8 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     POP AF
     RET
 
-
-; display_test:
-;     PUSH HL
-;     PUSH DE
-;     PUSH AF
-; ; display the buffer
-;     LD HL, 80*20+8
-;     LD DE, EDIT_BUFFER_ADDRESS
-;     CALL PutS
-;     LD A, '<'
-;     CALL PutC
-;     LD A, ' '
-;     CALL PutC
-; ; display buffer position
-;     LD HL, (LineEdit_CURSOR_IDX)
-;     LD E, L
-;     CALL Hex2BCD
-;     LD DE, HL
-;     LD HL, 80*21+17
-;     LD A, D
-;     CALL Hex2Str 
-;     LD A, E
-;     CALL Hex2Str
-; ; display buffer length
-;     LD HL, EDIT_BUFFER_ADDRESS
-;     CALL STRING_LENGTH
-;     LD E, A
-;     CALL Hex2BCD
-;     LD DE, HL
-;     LD HL, 80*21+45
-;     LD A, D
-;     CALL Hex2Str 
-;     LD A, E
-;     CALL Hex2Str
-; ; display insert mode
-;     LD HL, 80*22+14
-;     LD A, (LineEdit_INSERT_MODE)
-;     ADD A, '0'
-;     CALL PutC
-;     POP AF
-;     POP DE
-;     POP HL
-;     RET
-
-
-
-; display_BCD: ; number to display in A
-;     PUSH AF
-;     PUSH DE
-;     PUSH HL
-;     LD E, A
-;     CALL HEX2BCD
-;     LD A, H
-;     CALL HEX2STR
-;     LD A, L
-;     CALL HEX2STR
-;     LD A, ' '
-;     CALL SENDCHAR_A
-;     POP HL
-;     POP DE
-;     POP AF
-;     RET
-
-; MSG_EDITING_BufferPos:
-;     DB "buffer pos (E) :           - Buffer Length : ", 0x00
-; MSG_EDITING_InsertMode:
-;     DB "insert mode : ", 0x00
-; MSG_EDITING_Buffer:
-;     DB "Buffer >                                                               ", 0x00
 MSG_EDITING_EmptyBuffer:
-    DB "                                                                                ", 0x00
+    DB "                                                                           ", 0x00
 
 
     ENDIF
