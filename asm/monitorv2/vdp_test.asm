@@ -10,8 +10,9 @@
     include "../lib/stdio.asm"
     include "lineEdit.asm"
 
-; CURSOR_IDX:
-;     DW 0 ; row 0, col 0
+SCROLL_LINE_IDX EQU 25 ; line index to start scrolling
+
+
 
 Main:
     LD HL, CR_LF
@@ -32,9 +33,6 @@ Main:
     LD HL, CR_LF
     CALL PrintString
 
-
-
-
     CALL INIT_PATTERN_LAYOUT_TABLE
     CALL INIT_COLOR_TABLE
 
@@ -44,113 +42,77 @@ Main:
     LD HL, 0x0000
 
     LD B, 0
-;    LD (CURSOR_IDX), HL ; put the cursor at 0
     LD C, 0x01
     CALL Set_Blink
-
 
 .eventLoop:
     LD DE, MSG_PROMPT
     CALL PutS
-
+;    CALL Display_HL_In_Hex
     CALL LineEdit
-    LD A, CR_KEY_CODE
-    CALL PutC
-    LD A, LF_KEY_CODE
-    CALL PutC
 
+    LD DE, CR_LF
+    CALL PutS
+
+; command management
     LD A, (LINE_EDIT_BUFFER_ADDRESS)
-    CP 0x00
-    JP Z, .scrollManagement ; empty line, continue loop
     CP '²'
     JP Z, .endLoop
-    ; CP '*'
-    ; CALL Z, ScrollTest
+    CP 0x00 ; 
+    JP Z, .eventLoop ; empty line, nothing to display
+    CP '*'
+    JP Z, .dumpMem ; dump memory
     LD DE, LINE_EDIT_BUFFER_ADDRESS
     CALL PutS_LN
-.scrollManagement:
-    PUSH BC
-    LD BC, 80*15
-    SBC HL, BC
-    POP BC
-    CALL P, ScrollTest
+    JP .eventLoop
+
+.dumpMem:
+    PUSH HL
+    LD HL, LINE_EDIT_BUFFER_ADDRESS +2 ; skip the first char
+    CALL Str2Digits
+    JP NZ, .dumpMemError ; invalid number
+    LD HL, DE
+;    LD HL, 0x0000
+    LD DE, WORKING_MEMORY_START
+    CALL MemoryDump
+    POP HL
+    LD DE, WORKING_MEMORY_START
+    CALL PutS_LN
+    JP .eventLoop
+.dumpMemError:
+    POP HL
+    LD DE, MEM_DUMP_ERROR
+    CALL PutS_LN
     JP .eventLoop
 
 .endLoop:
-    ; LD HL, CR_LF
-    ; CALL PrintString
-    RET                     ; or HALT
+    LD HL, CR_LF
+    CALL PrintString
+    RET 
 
-ScrollTest:
-    PUSH AF
-    PUSH BC
-    PUSH DE
-    PUSH HL
 
-    LD HL, 80
-    LD C, 20 ; number of lines to read/write
-.screenLoop:
-; read line from vram
-;    LD HL, 80
-    LD A, VRAM_READ_MODE
-    CALL Set_VRAM_Address
-    LD DE, WORKING_MEMORY_START
-    LD B, 80 ; number of bytes to read
-.readLoop:
-    IN A, (VRAM_DATA)
-    LD (DE), A
-    INC DE
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    DJNZ .readLoop
-; write line to vram   
-    ; LD A, 0x00
-    ; LD (DE), A
-    ; PUSH HL
-    ; LD HL, WORKING_MEMORY_START   
-    ; CALL PrintString
-    ; LD HL, CR_LF
-    ; CALL PrintString
-    ; POP HL
-    PUSH BC
-    LD BC, 80 
-    SBC HL, BC
-    POP BC
-    LD A, VRAM_WRITE_MODE
-    CALL Set_VRAM_Address
-    LD DE, WORKING_MEMORY_START
-    LD B, 80 ; number of bytes to write
-.writeLoop:
-    LD A, (DE)
-    OUT (VRAM_DATA), A
-    INC DE
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    NOP
-    DJNZ .writeLoop
-    PUSH BC
-    LD BC, 160
-    ADD HL, BC
-    POP BC
-    DEC C
-    JP NZ, .screenLoop
-    POP HL
-    LD BC, 80 ; we position back HL to the start of the line
-    SBC HL, BC
-    POP DE
-    POP BC
-    POP AF
+; Display_HL_In_Hex:
+;     PUSH AF
+;     PUSH BC
+;     PUSH HL
+;     LD BC, HL
+;     LD HL, .DISPLAY_VAR+2
+;     LD A, B
+;     CALL Hex2Str
+;     LD HL, .DISPLAY_VAR+4
+;     LD A, C
+;     CALL Hex2Str
+;     LD HL, .DISPLAY_VAR+6
+;     LD (HL), ' '
+;     LD HL, .DISPLAY_VAR
+;     CALL PrintString
+;     POP HL
+;     POP BC
+;     POP AF
+;     RET
+; .DISPLAY_VAR : DB "0x0000 ", 0x00
 
-    RET
+
 
 INIT_PATTERN_LAYOUT_TABLE: ; write at adress 0x0000
     PUSH AF
@@ -211,13 +173,12 @@ INIT_COLOR_TABLE: ; write at adress 0x0000
 
 CR_LF:
     DB CR_KEY_CODE, LF_KEY_CODE, 0x00 ; Carriage return + line feed
-
-
 STREAM_MSG:
     DB "Stream Selected : ", 0x00
 MSG_PROMPT:
     DB "A:\\>", 0x00
 DEBUG:
     DB "DEBUG", CR_KEY_CODE, LF_KEY_CODE, 0x00
-
+MEM_DUMP_ERROR:
+    DB "Memory Dump Error : Invalid Address",0x00
     END

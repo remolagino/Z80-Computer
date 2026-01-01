@@ -135,7 +135,7 @@ putC_VRAM: ; write at adress HL in Pattern layout table the character in reg A
 Clear_Screen:
     CALL Init_Pattern_Layout_Table
     CALL Init_Color_Table
-    LD HL, PATTERN_LAYOUT_TABLE_BASE_ADDR
+    LD HL, 0x0000
     RET
 
 Init_Pattern_Layout_Table: ; write at adress 0x0000

@@ -4,9 +4,12 @@
     INCLUDE "serial.asm"
 ;    include "./lib/stdio.asm"
     
-HEX_HEADER_STRING:
+; ------------------------------------------------------------
+HEX_HEADER_STRING: ; Header string for hex dump
     DB "        0  1  2  3  4  5  6  7   8  9  A  B  C  D  E  F", 0x00    
-;    DB "        0  1  2  3  4  5  6  7   8  9  A  B  C  D  E  F",0x0D,0x0A,0x00    
+HEX_HEADER_STRING_LF: ; Header string for hex dump
+    DB "        0  1  2  3  4  5  6  7   8  9  A  B  C  D  E  F", 0x0A, 0x0D, 0x00    
+ 
 STRING_CR_LF:
     DB 0x0A, 0x0D, 0x00 ; Carriage return + line feed
 
@@ -31,8 +34,14 @@ StringLength: ; Calculate the length of the string in HL, return in A
     RET
 
 ; ------------------------------------------------------------
-Hex2Str: ; display a number in hex format (number in A, result in HL)
-    PUSH HL
+Hex2Str: ; convert a number to hex format (number in A, result in (HL), null terminated)
+    PUSH DE
+    LD DE, HL
+    CALL Byte2HexStr
+    POP DE
+    RET
+
+Byte2HexStr: ; convert a number to hex format (number in A, result in (DE), DE at end of string, not null terminated)
     PUSH AF
     SRL A ; Shift right to get the high nibble
     SRL A
@@ -47,8 +56,8 @@ Hex2Str: ; display a number in hex format (number in A, result in HL)
 .printAndNextNible:
 ;    CALL SendChar_A ; Send the character to the SIO port A
 ;    CALL PutC ; Send the character to the SIO port A
-    LD (HL), A
-    INC HL
+    LD (DE), A
+    INC DE
     POP AF ; Restore the original value in A
     PUSH AF
     AND 0x0F ; Get the low nibble
@@ -61,133 +70,72 @@ Hex2Str: ; display a number in hex format (number in A, result in HL)
 .printAndNextNible2: 
 ;   CALL SendChar_A ; Send the character to the SIO port A
 ;    CALL PutC ; Send the character to the SIO port A
-    LD (HL), A
-    INC HL
-    LD (HL), 0x00 ; Null terminator
+    LD (DE), A
+    INC DE
+    LD A, 0x00
+    LD (DE), A ; Null terminator
     POP AF
-    POP HL
     RET
 
-PrintHex: ;Print memory in hex format (address in HL, always 16 x16 bytes)
+
+MemoryDump: ;Memory Dump in hex format (address in HL, always 16 x16 bytes, Result in DE)
+    PUSH AF
     PUSH BC
     PUSH DE
     PUSH HL
-    LD C, 0x10 ; Number of rows to print
+
     PUSH HL
-    LD HL, HEX_HEADER_STRING ; Load the header string address
-    CALL PrintString ; Print the header string
-    LD HL, STRING_CR_LF ; Load the header string address
-    CALL PrintString ; Print the header string
+    LD HL, HEX_HEADER_STRING_LF ; Load the header string address
+.printHeaderLoop:
+    LDI
+    LD A, (HL)
+    OR A
+    JP NZ, .printHeaderLoop
+    
     POP HL
     LD A, L
     AND 0xF0 ; align on 16 bytes
     LD L, A
+    LD C, 0x10 ; Number of rows to print
 .printHexRowStart:
     LD A, H
-    CALL Hex2Str ; Convert to hex and send to SIO port A
+    CALL Byte2HexStr ; Convert H to hex 
     LD A, L
-    CALL Hex2Str ; Convert to hex and send to SIO port A
+    CALL Byte2HexStr ; Convert Lto hex 
     LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
+    LD (DE), A
+    INC DE
     LD A ,':'
-    CALL SendChar_A ; Send ':' to SIO port A
+    LD (DE), A
+    INC DE 
     LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
+    LD (DE), A
+    INC DE
+ 
     LD B, 0x10 ; Number of bytes to print
-    LD DE, HL ; Store the address in DE for char loop
+    PUSH HL ; Store HL address for char loop
 .printHexLoop:
     LD A, (HL)
-    CALL Hex2Str ; Convert to hex and send to SIO port A
+    CALL Byte2HexStr ; Convert to hex and copy to DE
     LD A, ' '
-    CALL SendChar_A
+    LD (DE), A
+    INC DE
     LD A, B
     CP 0x09 ; Check if we are at the 8th byte
     JP NZ, .next
     LD A, ' '
-    CALL SendChar_A
+    LD (DE), A
+    INC DE
 .next
     INC HL ; Increment address
     DJNZ .printHexLoop ; Loop for 16 bytes
     LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
-    LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
-    LD B, 0x10
-    LD HL, DE ; Restore the address in HL for char loop
-.printCharLoop: 
-    LD A, (HL)
-    CP 0x20 ; Check if character is printable
-    JP C, .notPrintable ; If not, print '.'
-    CP 0x7F ; Check if character is printable
-    JP C, .printable ; If not, print '.'
-    CP 0xA0
-    JP C, .notPrintable ; If not, print '.'
-.printable
-    CALL SendChar_A ; Send the character to SIO port A
-    JP .printCharEnd
-.notPrintable:
-    LD A, '.' ; Print '.' for non-printable characters
-    CALL SendChar_A ; Send the character to SIO port A
-.printCharEnd:
-    INC HL ; Increment address
-    DJNZ .printCharLoop ; Loop for 16 bytes
-    PUSH HL
-    LD HL, STRING_CR_LF 
-    CALL PrintString
-    POP HL
-    DEC C ; Decrement row counter
-    LD A,C
-    OR A ; Check if C is zero
-    JP NZ, .printHexRowStart ; If not zero, print next row
-    POP HL
-    POP DE
-    POP BC
-    RET
+    LD (DE), A
+    INC DE
+    LD (DE), A
+    INC DE
 
-PrintHex_OneRow: ;Print 16 Bytes in hex format (address in HL - number in D)
-    PUSH BC
-    PUSH DE
-    PUSH HL
-    LD A, D
-    SRL A
-    SRL A
-    SRL A
-    SRL A
-    CALL Hex2Str ; Convert to hex and send to SIO port A
-    LD A, D
-    SLA A
-    SLA A
-    SLA A
-    SLA A
-    CALL Hex2Str ; Convert to hex and send to SIO port A
-    LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
-    LD A ,':'
-    CALL SendChar_A ; Send ':' to SIO port A
-    LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
-    LD B, 0x10 ; Number of bytes to print
-;    LD DE, HL ; Store the address in DE for char loop
-    PUSH HL
-.printHexLoop:
-    LD A, (HL)
-    CALL Hex2Str ; Convert to hex and send to SIO port A
-    LD A, ' '
-    CALL SendChar_A
-    LD A, B
-    CP 0x09 ; Check if we are at the 8th byte
-    JP NZ, .next
-    LD A, ' '
-    CALL SendChar_A
-.next
-    INC HL ; Increment address
-    DJNZ .printHexLoop ; Loop for 16 bytes
-    LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
-    LD A ,' '
-    CALL SendChar_A ; Send space to SIO port A
     LD B, 0x10
-;    LD HL, DE ; Restore the address in HL for char loop
     POP HL ; Restore the address in HL for char loop
 .printCharLoop: 
     LD A, (HL)
@@ -198,20 +146,103 @@ PrintHex_OneRow: ;Print 16 Bytes in hex format (address in HL - number in D)
     CP 0xA0
     JP C, .notPrintable ; If not, print '.'
 .printable
-    CALL SendChar_A ; Send the character to SIO port A
+    LD (DE), A
+    INC DE
     JP .printCharEnd
 .notPrintable:
     LD A, '.' ; Print '.' for non-printable characters
-    CALL SendChar_A ; Send the character to SIO port A
+    LD (DE), A
+    INC DE
 .printCharEnd:
     INC HL ; Increment address
     DJNZ .printCharLoop ; Loop for 16 bytes
-    LD HL, STRING_CR_LF 
-    CALL PrintString
+    LD A, 0x0D ; Carriage return
+    LD (DE), A
+    INC DE
+    LD A, 0x0A
+    LD (DE), A
+    INC DE
+
+    DEC C ; Decrement row counter
+    LD A,C
+    OR A ; Check if C is zero
+    JP NZ, .printHexRowStart ; If not zero, print next row
+    LD A, 0x00
+    LD (DE), A ; Null terminator
     POP HL
     POP DE
     POP BC
+    POP AF
     RET
+
+; PrintHex_OneRow: ;Print 16 Bytes in hex format (address in HL - number in D)
+;     PUSH BC
+;     PUSH DE
+;     PUSH HL
+;     LD A, D
+;     SRL A
+;     SRL A
+;     SRL A
+;     SRL A
+;     CALL Hex2Str ; Convert to hex and send to SIO port A
+;     LD A, D
+;     SLA A
+;     SLA A
+;     SLA A
+;     SLA A
+;     CALL Hex2Str ; Convert to hex and send to SIO port A
+;     LD A ,' '
+;     CALL SendChar_A ; Send space to SIO port A
+;     LD A ,':'
+;     CALL SendChar_A ; Send ':' to SIO port A
+;     LD A ,' '
+;     CALL SendChar_A ; Send space to SIO port A
+;     LD B, 0x10 ; Number of bytes to print
+; ;    LD DE, HL ; Store the address in DE for char loop
+;     PUSH HL
+; .printHexLoop:
+;     LD A, (HL)
+;     CALL Hex2Str ; Convert to hex and send to SIO port A
+;     LD A, ' '
+;     CALL SendChar_A
+;     LD A, B
+;     CP 0x09 ; Check if we are at the 8th byte
+;     JP NZ, .next
+;     LD A, ' '
+;     CALL SendChar_A
+; .next
+;     INC HL ; Increment address
+;     DJNZ .printHexLoop ; Loop for 16 bytes
+;     LD A ,' '
+;     CALL SendChar_A ; Send space to SIO port A
+;     LD A ,' '
+;     CALL SendChar_A ; Send space to SIO port A
+;     LD B, 0x10
+; ;    LD HL, DE ; Restore the address in HL for char loop
+;     POP HL ; Restore the address in HL for char loop
+; .printCharLoop: 
+;     LD A, (HL)
+;     CP 0x20 ; Check if character is printable
+;     JP C, .notPrintable ; If not, print '.'
+;     CP 0x7F ; Check if character is printable
+;     JP C, .printable ; If not, print '.'
+;     CP 0xA0
+;     JP C, .notPrintable ; If not, print '.'
+; .printable
+;     CALL SendChar_A ; Send the character to SIO port A
+;     JP .printCharEnd
+; .notPrintable:
+;     LD A, '.' ; Print '.' for non-printable characters
+;     CALL SendChar_A ; Send the character to SIO port A
+; .printCharEnd:
+;     INC HL ; Increment address
+;     DJNZ .printCharLoop ; Loop for 16 bytes
+;     LD HL, STRING_CR_LF 
+;     CALL PrintString
+;     POP HL
+;     POP DE
+;     POP BC
+;     RET
 
 ; ------------------------------------------------------------
 SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
@@ -222,23 +253,23 @@ SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
     DEC HL ; Decrement buffer pointer
     RET
 
-; -------------------------------------------
-Char2Digit2: ; convert one 0-9-A-F character (in A) to a number (in A), if not a number negative
-    XOR 0x30 ; Convert to number
-    CP 0x0A ; Check if num betwwen 0 and 9
-    RET M ; 
-    XOR 0x30 ; restore A
-    XOR 0x40
-    CP 0x00 ; remove @
-    JP Z, .notANumber
-    CP 0x07 ; check if byte is A to F
-    JP NC, .notANumber ; If not, out
-    ADD  0x09 ; Convert to number A-F
-    RET
-.notANumber:
-    AND  0x0F ; remove @
-    OR  0xF0
-    RET
+; ; -------------------------------------------
+; Char2Digit2: ; convert one 0-9-A-F character (in A) to a number (in A), if not a number negative
+;     XOR 0x30 ; Convert to number
+;     CP 0x0A ; Check if num betwwen 0 and 9
+;     RET M ; 
+;     XOR 0x30 ; restore A
+;     XOR 0x40
+;     CP 0x00 ; remove @
+;     JP Z, .notANumber
+;     CP 0x07 ; check if byte is A to F
+;     JP NC, .notANumber ; If not, out
+;     ADD  0x09 ; Convert to number A-F
+;     RET
+; .notANumber:
+;     AND  0x0F ; remove @
+;     OR  0xF0
+;     RET
 
 ; -------------------------------------------
 Char2Digit: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a number negative

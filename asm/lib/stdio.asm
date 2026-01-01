@@ -12,11 +12,14 @@ STREAM_IN_KEYBOARD EQU 0x20
 LF_KEY_CODE EQU 0x0A
 CR_KEY_CODE EQU 0x0D
 
+VDP_SCROLL_LINE_IDX EQU 25 ; line index to start scrolling
+
+
 
 ;VRAM_DATA EQU   0x40            ; PORT #0 - VRAM data port
 ;    include "jumpTable.inc"
     include "serial.asm"
-    include "../vdp_core.asm"
+    include "vdp_core.asm"
     include "keyboard.asm"
 
 PutC: ; Output character in A to standard output at (HL) to standard output
@@ -104,12 +107,6 @@ SIO_PUTC: ; char to print in B
     LD A, BKSP_KEY_CODE
     CALL SendChar_A
     RET
-; .lineFeed:
-;     CALL SENDCHAR_A
-;     RET
-; .chariotReturn:
-;     CALL SENDCHAR_A
-;     RET
 .goUp:
     LD A, ESC_KEY_CODE
     CALL SendChar_A
@@ -164,14 +161,14 @@ VDP_PUTC: ; char to print in B, at (HL)
     JP Z, .goRight
     CALL putC_VRAM
     INC HL
-    RET
+    JP .exit
 .backSpace:
     PUSH AF
     DEC HL
     LD A, ' '
     CALL putC_VRAM
     POP AF
-    RET
+    JP .exit
 .horizontalTab:
     PUSH AF
     PUSH BC
@@ -191,47 +188,42 @@ VDP_PUTC: ; char to print in B, at (HL)
     DJNZ .tabLoop
     POP BC
     POP AF
-    RET
+    JP .exit
 .LineFeed:
     PUSH BC
     LD BC, 80
     ADD HL, BC
     POP BC
-    RET
-.chariotReturn: ; Debugging done, missing PUSH POP
+    JP .exit
+.chariotReturn: ;
     PUSH DE
     PUSH HL
-;    CALL Print_HL_Hex
     OR A ; clear carry
     LD DE, 80
 .numberOfRowsLoop:
     SBC HL, DE
-;    CALL Print_HL_Hex
     JP M, .beginningOfScreen ; if negative, we are at the beginning of the screen
     JP .numberOfRowsLoop
 .beginningOfScreen:
     LD DE, 80
     ADD HL, DE
-;    CALL Print_HL_Hex
     LD DE, HL
     POP HL
     OR A ; clear carry
-;    CALL Print_HL_Hex
     SBC HL, DE
-;    CALL Print_HL_Hex
     POP DE
-    RET
+    JP  .exit
 .goLeft:
     PUSH AF
     PUSH BC
     LD A, H
     OR L
-    JP Z, .goLeft.exit ; if at left edge, do nothing
+    JP Z, .goLeft.end ; if at left edge, do nothing
     DEC HL
-.goLeft.exit:
+.goLeft.end:
     POP BC
     POP AF
-    RET
+    JP .exit
 .goRight:
     PUSH AF
     PUSH DE
@@ -242,16 +234,16 @@ VDP_PUTC: ; char to print in B, at (HL)
     SBC HL, DE
     LD A, H
     OR L
-    JP Z, .goRight.exit ; if at bottom right edge, do nothing
+    JP Z, .goRight.end ; if at bottom right edge, do nothing
     POP HL
     INC HL
     PUSH HL
-.goRight.exit:
+.goRight.end:
     POP HL
     POP DE
     POP AF
-    RET
-.goUp: ; # TODO UPDATE
+    JP .exit
+.goUp: ; 
     PUSH AF
     PUSH BC
     PUSH DE
@@ -259,19 +251,19 @@ VDP_PUTC: ; char to print in B, at (HL)
     LD DE, 80
     OR A
     SBC HL, DE
-    JP M, .goUp.exit ; if at top edge, do nothing
+    JP M, .goUp.end ; if at top edge, do nothing
     POP HL
     LD DE, 80 ; move up one row
     OR A ; clear carry
     SBC HL, DE
     PUSH HL
-.goUp.exit:
+.goUp.end:
     POP HL
     POP DE
     POP BC
     POP AF
-    RET
-.goDown: ; # TODO - Update
+    JP .exit
+.goDown: ; 
     PUSH AF
     PUSH BC
     PUSH DE
@@ -280,17 +272,79 @@ VDP_PUTC: ; char to print in B, at (HL)
     LD HL, 80*25-1 ; #TODO Parmetrize this at some point
     OR A
     SBC HL, DE
-    JP M, .goDown.exit ; if at left edge, do nothing
+    JP M, .goDown.end ; if at left edge, do nothing
     POP HL
     LD DE, 80 ; move down one row
     ADD HL, DE
     PUSH HL
-.goDown.exit:
+.goDown.end:
     POP HL
     POP DE
     POP BC
     POP AF
+.exit:
+    CALL SCROLL_MANAGEMENT
     RET
+
+
+SCROLL_MANAGEMENT:
+; test if scroll needed
+    PUSH BC
+    PUSH HL
+    LD BC, 80*VDP_SCROLL_LINE_IDX ; start scroll when line 10 is reached
+    SBC HL, BC
+    POP HL
+    POP BC
+    RET M
+
+    PUSH AF
+    PUSH BC
+    PUSH DE
+    PUSH HL
+    LD HL, 80
+    LD C, VDP_SCROLL_LINE_IDX+1 ; number of lines to scroll
+.screenLoop:
+; read line from vram
+    LD A, VRAM_READ_MODE
+    CALL Set_VRAM_Address
+    LD DE, STDIO_MEMORY_START
+    LD B, 80 ; number of bytes to read
+.readLoop:
+    IN A, (VRAM_DATA)
+    LD (DE), A
+    INC DE
+    NOP7
+    DJNZ .readLoop
+; write line to vram   
+    PUSH BC
+    LD BC, 80 
+    SBC HL, BC
+    POP BC
+    LD A, VRAM_WRITE_MODE
+    CALL Set_VRAM_Address
+    LD DE, STDIO_MEMORY_START
+    LD B, 80 ; number of bytes to write
+.writeLoop:
+    LD A, (DE)
+    OUT (VRAM_DATA), A
+    INC DE
+    NOP7
+    DJNZ .writeLoop
+    PUSH BC
+    LD BC, 160
+    ADD HL, BC
+    POP BC
+    DEC C
+    JP NZ, .screenLoop
+    POP HL
+    LD BC, 80 ; we position back HL to the start of the line
+    SBC HL, BC
+    POP DE
+    POP BC
+    POP AF
+
+    RET
+
 
 PRINTER_PUTC:
     RET
@@ -334,24 +388,31 @@ SIO_PUTS: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
     RET
 
 VDP_PUTS_LN:
-    PUSH AF
-    PUSH DE
-.putsLoop:
-    LD A, (DE)
-    CP 0x00
-    JP Z, .exit
-    LD B, A
-    CALL VDP_PUTC
-    INC DE
-    ; INC HL
-    JP .putsLoop   
-.exit:
+;     PUSH AF
+;     PUSH DE
+; .putsLoop:
+;     LD A, (DE)
+;     CP 0x00
+;     JP Z, .exit
+;     LD B, A
+;     CALL VDP_PUTC
+;     INC DE
+;     ; INC HL
+;     JP .putsLoop   
+; .exit:
+;     LD B, CR_KEY_CODE
+;     CALL VDP_PUTC ;
+;     LD B, LF_KEY_CODE
+;     CALL VDP_PUTC ;
+;     POP DE
+;     POP AF
+    CALL VDP_PUTS
+    PUSH BC
     LD B, CR_KEY_CODE
     CALL VDP_PUTC ;
     LD B, LF_KEY_CODE
     CALL VDP_PUTC ;
-    POP DE
-    POP AF
+    POP BC
     RET
 
 VDP_PUTS:

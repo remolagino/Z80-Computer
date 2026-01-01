@@ -22,11 +22,16 @@ LINE_EDIT_BUFFER_END EQU LINE_EDIT_BUFFER_ADDRESS + LINE_EDIT_BUFFER_SIZE ; end 
 ;LINE_EDIT_BUFFER_START EQU LINE_EDIT_BUFFER_ADDRESS ; start of buffer
 
 ; ======= Keyboard Variables =======
-KEYBOARD_RAM_START EQU RAM_START + 0x0100 ; Start of Keyboard RAM area
+KEYBOARD_RAM_START EQU LINE_EDIT_BUFFER_END + 0x0010 ; Start of Keyboard RAM area
     include "../lib/keyboard_memoryMap.inc"
 
+; ======= STDIO Variables =======
+STDIO_MEMORY_START EQU KEYBOARD_RAM_END ; start of stdio memory area
+STDIO_MEMORY_SIZE EQU 128 ; size of stdio memory area
+STDIO_MEMORY_END EQU STDIO_MEMORY_START + STDIO_MEMORY_SIZE ; end of stdio memory area
+
 ; ======= Working Memory =======
-WORKING_MEMORY_START EQU KEYBOARD_RAM_END ; start of working memory
+WORKING_MEMORY_START EQU STDIO_MEMORY_END ; start of working memory
 
     ENDIF ; __MONITOR_INC__
     

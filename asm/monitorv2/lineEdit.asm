@@ -19,6 +19,7 @@ LineEdit_Init:
     LD (LINE_EDIT_INSERT_MODE), A ; insert mode off
     RET
 
+
 LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     LD (LINE_EDIT_LINESTART), HL
     PUSH AF
@@ -26,7 +27,6 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     PUSH DE
     PUSH HL
     PUSH IX
-
 ; Initialise the buffer and variables
     LD HL, LINE_EDIT_BUFFER_ADDRESS
     LD B, LINE_EDIT_BUFFER_SIZE+1
@@ -37,18 +37,16 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     DJNZ .initLoop
     LD A, 0x00
  ; end of init
-
     LD HL, (LINE_EDIT_LINESTART)
     LD DE, MSG_EDITING_EmptyBuffer
     CALL PutS
     LD HL, (LINE_EDIT_LINESTART); replace cursor at line start
- 
 ;   init cursor idx at 0
     LD D, 0x00
     LD E, 0x00
     LD IX, LINE_EDIT_BUFFER_ADDRESS
 ;    LD HL, 80*15
-
+ 
 .lineEditLoop:  
     CALL GetC
     CP 0x00
@@ -133,6 +131,7 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     INC IX ; memory pointer to the proper spot in the buffer
     INC DE ; cursor idx in buffer
     CALL PutC ; increment HL on its own
+
     JP .displayCursor
 .upCursorProcess:
     JP .displayCursor
@@ -144,7 +143,6 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     JP Z, .displayCursor ; if at beginning of line, do nothing
     DEC IX
     DEC E
-;    DEC HL
     LD A, LEFT_KEY_CODE
     CALL PutC
     JP .displayCursor
@@ -154,7 +152,6 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     JP Z, .displayCursor ; if at end of buffer, do nothing
     INC IX
     INC E
-;    INC HL
     LD A, RIGHT_KEY_CODE
     CALL PutC
     JP .displayCursor
@@ -243,6 +240,7 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     LD HL, (LINE_EDIT_LINESTART)
     ADD HL, DE
     LD C, 0x01
+
     CALL Set_Blink ; set blink at new position
     POP HL
     POP BC
