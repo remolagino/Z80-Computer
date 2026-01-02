@@ -37,9 +37,9 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     DJNZ .initLoop
     LD A, 0x00
  ; end of init
-    LD HL, (LINE_EDIT_LINESTART)
-    LD DE, MSG_EDITING_EmptyBuffer
-    CALL PutS
+    ; LD HL, (LINE_EDIT_LINESTART)
+    ; LD DE, MSG_EDITING_EmptyBuffer
+    ; CALL PutS
     LD HL, (LINE_EDIT_LINESTART); replace cursor at line start
 ;   init cursor idx at 0
     LD D, 0x00
@@ -57,7 +57,7 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     LD HL, (LINE_EDIT_LINESTART)
     ADD HL, DE
     LD C, 0x00
-    CALL Set_Blink ; unset blink at current position
+    CALL VDP_Set_Blink ; unset blink at current position
     POP HL
     POP BC
 
@@ -241,7 +241,7 @@ LineEdit: ;handle line editing (display at HL), exit when Enter is pressed
     ADD HL, DE
     LD C, 0x01
 
-    CALL Set_Blink ; set blink at new position
+    CALL VDP_Set_Blink ; set blink at new position
     POP HL
     POP BC
     JP .lineEditLoop

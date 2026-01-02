@@ -899,7 +899,7 @@ GetBaseAddress_IY: ; return the return address of the CALL in IY
     RET
 
 ;  -------------------------------------------
-; Padding to 4900
+; Padding to 0x1900
     DS 0x1900 - $    ; pad to 0x1900 , judt below 8KB
 
     ORG 0x1900

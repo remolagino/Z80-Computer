@@ -1,6 +1,19 @@
     IFNDEF __STRING__
     DEFINE __STRING__ 1
 
+; String functions
+; - StringLength: ; Calculate the length of the string in HL, return in A
+; - Hex2Str: ; convert a number to hex format (number in A, result in (HL), null terminated)
+; - Byte2HexStr: ; convert a number to hex format (number in A, result in (DE), DE at end of string, not null terminated)
+; - MemoryDump: ;Memory Dump in hex format (address in HL, always 16 x16 bytes, Result in DE)
+; - SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
+; - Char2Digit: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a number negative
+; - StrB2Digits: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag Z is success
+; - StrW2Digits: ;Convert a word in hexstring (in (HL)) to a number (in DE) Zero flag Z is success
+; - Hex2BCD: ; Convert a hex number in E to BCD in HL
+;
+
+
     INCLUDE "serial.asm"
 ;    include "./lib/stdio.asm"
     
@@ -72,8 +85,8 @@ Byte2HexStr: ; convert a number to hex format (number in A, result in (DE), DE a
 ;    CALL PutC ; Send the character to the SIO port A
     LD (DE), A
     INC DE
-    LD A, 0x00
-    LD (DE), A ; Null terminator
+    ; LD A, 0x00
+    ; LD (DE), A ; Null terminator
     POP AF
     RET
 
@@ -175,75 +188,6 @@ MemoryDump: ;Memory Dump in hex format (address in HL, always 16 x16 bytes, Resu
     POP AF
     RET
 
-; PrintHex_OneRow: ;Print 16 Bytes in hex format (address in HL - number in D)
-;     PUSH BC
-;     PUSH DE
-;     PUSH HL
-;     LD A, D
-;     SRL A
-;     SRL A
-;     SRL A
-;     SRL A
-;     CALL Hex2Str ; Convert to hex and send to SIO port A
-;     LD A, D
-;     SLA A
-;     SLA A
-;     SLA A
-;     SLA A
-;     CALL Hex2Str ; Convert to hex and send to SIO port A
-;     LD A ,' '
-;     CALL SendChar_A ; Send space to SIO port A
-;     LD A ,':'
-;     CALL SendChar_A ; Send ':' to SIO port A
-;     LD A ,' '
-;     CALL SendChar_A ; Send space to SIO port A
-;     LD B, 0x10 ; Number of bytes to print
-; ;    LD DE, HL ; Store the address in DE for char loop
-;     PUSH HL
-; .printHexLoop:
-;     LD A, (HL)
-;     CALL Hex2Str ; Convert to hex and send to SIO port A
-;     LD A, ' '
-;     CALL SendChar_A
-;     LD A, B
-;     CP 0x09 ; Check if we are at the 8th byte
-;     JP NZ, .next
-;     LD A, ' '
-;     CALL SendChar_A
-; .next
-;     INC HL ; Increment address
-;     DJNZ .printHexLoop ; Loop for 16 bytes
-;     LD A ,' '
-;     CALL SendChar_A ; Send space to SIO port A
-;     LD A ,' '
-;     CALL SendChar_A ; Send space to SIO port A
-;     LD B, 0x10
-; ;    LD HL, DE ; Restore the address in HL for char loop
-;     POP HL ; Restore the address in HL for char loop
-; .printCharLoop: 
-;     LD A, (HL)
-;     CP 0x20 ; Check if character is printable
-;     JP C, .notPrintable ; If not, print '.'
-;     CP 0x7F ; Check if character is printable
-;     JP C, .printable ; If not, print '.'
-;     CP 0xA0
-;     JP C, .notPrintable ; If not, print '.'
-; .printable
-;     CALL SendChar_A ; Send the character to SIO port A
-;     JP .printCharEnd
-; .notPrintable:
-;     LD A, '.' ; Print '.' for non-printable characters
-;     CALL SendChar_A ; Send the character to SIO port A
-; .printCharEnd:
-;     INC HL ; Increment address
-;     DJNZ .printCharLoop ; Loop for 16 bytes
-;     LD HL, STRING_CR_LF 
-;     CALL PrintString
-;     POP HL
-;     POP DE
-;     POP BC
-;     RET
-
 ; ------------------------------------------------------------
 SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
     LD A, (HL) ; Read the first character
@@ -253,25 +197,6 @@ SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
     DEC HL ; Decrement buffer pointer
     RET
 
-; ; -------------------------------------------
-; Char2Digit2: ; convert one 0-9-A-F character (in A) to a number (in A), if not a number negative
-;     XOR 0x30 ; Convert to number
-;     CP 0x0A ; Check if num betwwen 0 and 9
-;     RET M ; 
-;     XOR 0x30 ; restore A
-;     XOR 0x40
-;     CP 0x00 ; remove @
-;     JP Z, .notANumber
-;     CP 0x07 ; check if byte is A to F
-;     JP NC, .notANumber ; If not, out
-;     ADD  0x09 ; Convert to number A-F
-;     RET
-; .notANumber:
-;     AND  0x0F ; remove @
-;     OR  0xF0
-;     RET
-
-; -------------------------------------------
 Char2Digit: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a number negative
     XOR 0x30 ; check if line 3x
     CP 0x0A ; Check if num betwwen 0 and 9
@@ -297,7 +222,7 @@ Char2Digit: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a
     RET
 
 ; -------------------------------------------
-Str2Digits: ;Convert a hexstring (in (HL)) to a number (in DE) Zero flag Z is success
+StrW2Digits: ;Convert a word in hexstring (in (HL)) to a number (in DE) Zero flag Z is success
     PUSH BC
 ;    PUSH DE
     CALL SpaceRemoval
@@ -339,6 +264,49 @@ Str2Digits: ;Convert a hexstring (in (HL)) to a number (in DE) Zero flag Z is su
 .dump_end
     LD A, 0x00 ; Null terminator
     OR A ; Set Zero flag to Z indicate success 
+.end:
+;    POP DE
+    POP BC
+    RET
+
+StrB2Digits: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag Z is success
+    PUSH BC
+;    PUSH DE
+    CALL SpaceRemoval
+    ; LD DE, 0x0000; initialize DE to 0
+;     LD B, 3 ; Number of bytes to read
+; .char2digitLoop:
+    LD A, (HL) ; Read the first character
+    CALL Char2Digit ; Convert to number
+    OR A ; initialise sign flag
+    JP M, .notANumber
+    RLCA
+    RLCA
+    RLCA
+    RLCA
+    LD B, A
+    INC HL ; Increment HL to get the next characters
+    ; DJNZ .char2digitLoop ; Loop for 4 characters
+    LD A, (HL) ; Read the last character
+    CALL Char2Digit ; Convert to number
+    OR A ; initialise sign flag
+    JP M, .notANumber
+    OR B  
+    LD B, A
+    INC HL ; increment to verify the buffer end
+    LD A, (HL) ; Read the first character
+    CP 0x00 ; Check for null terminator
+    JP Z, .dump_end ; If not null terminator, error
+    CP ' ' ; Check for space
+    JP Z, .dump_end ; If not space, error
+.notANumber:
+    LD A, 0x01 ; 
+    OR A ; Set Zero flag to NZ to indicate error
+    JP .end
+.dump_end
+    LD A, 0x00 ; 
+    OR A ; Set Zero flag to Z indicate success 
+    LD A, B ; put the result in A
 .end:
 ;    POP DE
     POP BC

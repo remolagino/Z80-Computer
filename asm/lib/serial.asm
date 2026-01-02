@@ -20,6 +20,8 @@ SIO_CTRL_A EQU SIO_ADDR + 2 ; A0 = 0 -> Channel A / A1 = 1 -> Cmd
 SIO_CTRL_B EQU SIO_ADDR + 3 ; A0 = 1 -> Channel B / A1 = 1 -> Cmd
 
 
+
+
 ; ------------------------------------------------------------
 InitSerial_A: ; initialisation of SIO Channel A (Terminal)
 ; initialisation of CTC Channel 1 - 

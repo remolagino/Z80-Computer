@@ -159,14 +159,14 @@ VDP_PUTC: ; char to print in B, at (HL)
     JP Z, .goDown
     CP RIGHT_KEY_CODE
     JP Z, .goRight
-    CALL putC_VRAM
+    CALL VDP_putC_VRAM
     INC HL
     JP .exit
 .backSpace:
     PUSH AF
     DEC HL
     LD A, ' '
-    CALL putC_VRAM
+    CALL VDP_putC_VRAM
     POP AF
     JP .exit
 .horizontalTab:
@@ -181,7 +181,7 @@ VDP_PUTC: ; char to print in B, at (HL)
     INC A
     LD B, A ; number of space to add
     LD A , ' '
-    CALL putC_VRAM
+    CALL VDP_putC_VRAM
 .tabLoop:
     OUT (VRAM_DATA), A
     INC HL
@@ -306,7 +306,7 @@ SCROLL_MANAGEMENT:
 .screenLoop:
 ; read line from vram
     LD A, VRAM_READ_MODE
-    CALL Set_VRAM_Address
+    CALL VDP_Set_VRAM_Address
     LD DE, STDIO_MEMORY_START
     LD B, 80 ; number of bytes to read
 .readLoop:
@@ -321,7 +321,7 @@ SCROLL_MANAGEMENT:
     SBC HL, BC
     POP BC
     LD A, VRAM_WRITE_MODE
-    CALL Set_VRAM_Address
+    CALL VDP_Set_VRAM_Address
     LD DE, STDIO_MEMORY_START
     LD B, 80 ; number of bytes to write
 .writeLoop:
@@ -350,6 +350,7 @@ PRINTER_PUTC:
     RET
 
 SIO_PUTS_LN: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
+    PUSH BC
     PUSH DE
     PUSH HL
     LD HL, DE
@@ -368,9 +369,11 @@ SIO_PUTS_LN: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
     CALL SIO_PUTC ;
     POP HL
     POP DE
+    POP BC
     RET
 
 SIO_PUTS: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
+    PUSH BC
     PUSH DE
     PUSH HL
     LD HL, DE
@@ -385,27 +388,10 @@ SIO_PUTS: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
 .end:
     POP HL
     POP DE
+    POP BC
     RET
 
 VDP_PUTS_LN:
-;     PUSH AF
-;     PUSH DE
-; .putsLoop:
-;     LD A, (DE)
-;     CP 0x00
-;     JP Z, .exit
-;     LD B, A
-;     CALL VDP_PUTC
-;     INC DE
-;     ; INC HL
-;     JP .putsLoop   
-; .exit:
-;     LD B, CR_KEY_CODE
-;     CALL VDP_PUTC ;
-;     LD B, LF_KEY_CODE
-;     CALL VDP_PUTC ;
-;     POP DE
-;     POP AF
     CALL VDP_PUTS
     PUSH BC
     LD B, CR_KEY_CODE
@@ -417,6 +403,7 @@ VDP_PUTS_LN:
 
 VDP_PUTS:
     PUSH AF
+    PUSH BC
     PUSH DE
 .putsLoop:
     LD A, (DE)
@@ -429,6 +416,7 @@ VDP_PUTS:
     JP .putsLoop   
 .exit:
     POP DE
+    POP BC
     POP AF
     RET
 

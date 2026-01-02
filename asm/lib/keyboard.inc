@@ -33,7 +33,7 @@ CTRL_KEYS_MATRIX:
 
  
 SHIFT_MATRIX: ; organised by columns
-    DB 0x00, TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
+    DB '²', TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
     DB '1', 'A', 'Q', '>'
     DB '2', 'Z', 'S', 'W'
     DB '3', 'E', 'D', 'X'
@@ -63,7 +63,7 @@ DECODE_MATRIX: ; organised by columns
     DB '=', '$', '*', '!'
 
 CTRL_MATRIX: ; organised by columns
-    DB 0x00, TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
+    DB '²', TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
     DB '1', 0x82, 0x86, '>'
     DB '2', 0x88, 0x8A, 0x84
     DB '3', 0x83, 0x87, 0x89
@@ -78,7 +78,7 @@ CTRL_MATRIX: ; organised by columns
     DB '+', '£', 'µ', '§'
 
 ALT_MATRIX: ; organised by columns
-    DB 0x00, TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
+    DB '²', TAB_KEY_CODE, CAPSLOCK_KEY_CODE, 0x00
     DB 0x00, 0x00, 0x00, 0x00
     DB '~', 0x00, 0x00, 0x00
     DB '#', '¤', 0x00, 0x00

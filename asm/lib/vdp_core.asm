@@ -31,7 +31,7 @@ PATTERN_GENERATOR_BASE_ADDR EQU 0x1000 ; Base address of pattern generator table
     NOP
     ENDM
 
-Write_Reg: ; REG number in C, Value in A
+VDP_Write_Reg: ; REG number in C, Value in A
     PUSH AF
     ;DI
     OUT (VDP_REG_SETUP), A
@@ -42,14 +42,14 @@ Write_Reg: ; REG number in C, Value in A
     POP AF
     RET
 
-Write_Reg_Indirect: ; REG number in A (add +128 for no auto increment), Values in (HL), number of values in B
+VDP_Write_Reg_Indirect: ; REG number in A (add +128 for no auto increment), Values in (HL), number of values in B
     LD C, 17 ; 17: indirect register number
-    CALL Write_Reg
+    CALL VDP_Write_Reg
     LD C, VDP_REG_INDIR        ; you can also write ld bc,#nn9B, which is faster
     OTIR
     RET
 
-Set_VRAM_Address: ; Set VRAM address from HL, READ or WRITE mode in A
+VDP_Set_VRAM_Address: ; Set VRAM address from HL, READ or WRITE mode in A
     PUSH AF
     PUSH BC
     PUSH HL
@@ -60,7 +60,7 @@ Set_VRAM_Address: ; Set VRAM address from HL, READ or WRITE mode in A
     AND 0x03 ; keep only A14 et A15 in the 2 rightmost positions
 
     LD C, 14
-    CALL Write_Reg
+    CALL VDP_Write_Reg
     LD A, L
     OUT (VRAM_ADDR), A
 
@@ -74,7 +74,7 @@ Set_VRAM_Address: ; Set VRAM address from HL, READ or WRITE mode in A
     POP AF
     RET
 
-Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C value (0: unset, 1: set)
+VDP_Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C value (0: unset, 1: set)
     PUSH AF
     PUSH BC
     PUSH DE
@@ -95,7 +95,7 @@ Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C val
     LD DE, COLOR_TABLE_BASE_ADDR
     ADD HL, DE ; compute the address in VRAM of the color byte
     LD A, VRAM_WRITE_MODE
-    CALL Set_VRAM_Address
+    CALL VDP_Set_VRAM_Address
 
     LD A, C
 .shift_loop:  ; Shift the blink  to the right position
@@ -110,7 +110,7 @@ Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C val
     RET
 
 
-putC_VRAM: ; write at adress HL in Pattern layout table the character in reg A
+VDP_putC_VRAM: ; write at adress HL in Pattern layout table the character in reg A
     PUSH AF
     PUSH DE
     PUSH HL
@@ -120,7 +120,7 @@ putC_VRAM: ; write at adress HL in Pattern layout table the character in reg A
 
     PUSH AF
     LD A, VRAM_WRITE_MODE
-    CALL Set_VRAM_Address
+    CALL VDP_Set_VRAM_Address
     POP AF
 
     OUT (VRAM_DATA), A
@@ -132,7 +132,7 @@ putC_VRAM: ; write at adress HL in Pattern layout table the character in reg A
 
 ; Empty the screen by initializing pattern layout and color tables
 ; Position the cursor at top-left corner
-Clear_Screen:
+VDP_Clear_Screen:
     CALL Init_Pattern_Layout_Table
     CALL Init_Color_Table
     LD HL, 0x0000
@@ -145,7 +145,7 @@ Init_Pattern_Layout_Table: ; write at adress 0x0000
 
     LD HL, PATTERN_LAYOUT_TABLE_BASE_ADDR
     LD A, VRAM_WRITE_MODE
-    CALL Set_VRAM_Address
+    CALL VDP_Set_VRAM_Address
     LD HL, 80*27 ; number of bytes to write (0x0B0D = 2821 bytes)
 .loop:
     LD A, ' ' ; value to write to initialize VRAM
@@ -168,7 +168,7 @@ Init_Color_Table: ;
     PUSH HL
     LD HL, COLOR_TABLE_BASE_ADDR
     LD A, VRAM_WRITE_MODE
-    CALL Set_VRAM_Address
+    CALL VDP_Set_VRAM_Address
 
     LD HL, 270 ; number of bytes to write (0x0B0D = 2821 bytes)
 .loop:
