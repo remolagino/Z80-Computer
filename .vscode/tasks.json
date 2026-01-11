@@ -5,8 +5,8 @@
     {
       "label": "Assemble Z80",
       "type": "shell",
-      "command": "/home/pi/sjasmplus/sjasmplus",
-     // "command": "c:/sjasmplus-1.21.0.win/sjasmplus.exe",
+    //  "command": "/home/pi/sjasmplus/sjasmplus",
+      "command": "c:/sjasmplus-1.21.0.win/sjasmplus.exe",
       "args": [
         "${file}",
         "--raw=${fileDirname}/${fileBasenameNoExtension}.bin",

@@ -51,7 +51,7 @@ MONITORV2_START_ADDRESS  EQU 0x5000
 DEFAULT_INTERRUPT_VECTOR:
     LD HL, DEFAULT_INTERRUPT_VECTOR_MSG
     CALL PrintString
-    RET
+    RETI
 DEFAULT_INTERRUPT_VECTOR_MSG:
     DB "Default Interrupt Routine", 0x00
 
@@ -61,6 +61,8 @@ DEFAULT_INTERRUPT_VECTOR_MSG:
     include "vdp_t2_init.asm"
     include "../lib/stdio.asm"
     include "lineEdit.asm"
+    include "parseCmdLine.asm"
+    include "commandList.asm"
 
 Main:
 ; MMU Init _Do Not Move
@@ -84,7 +86,9 @@ Main:
 
 ;    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
     LD A, STREAM_OUT_VDP|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
-    LD (STREAM_SELECT), A
+    LD (STDIO_STREAM_SELECT), A
+    LD A, 0x00
+    LD (STDIO_DEAD_KEY), A
 
     CALL VDP_T2_Init
     PUSH HL
@@ -112,6 +116,9 @@ Main:
     CALL PrintString
     POP HL
 
+; initialise downcounter in CTC3
+    CALL Init_CTC3
+
 ; Clear screen (pattern layout and color table in texte mode 2)
     CALL VDP_Clear_Screen
     PUSH HL
@@ -119,7 +126,18 @@ Main:
     CALL PrintString
     POP HL
 
-;    LD HL, 0x0000
+    PUSH HL
+    LD A, (STDIO_STREAM_SELECT)
+    LD HL, WORKING_MEMORY_START
+    CALL Hex2Str
+    CALL PrintString
+    LD HL, CR_LF
+    CALL PrintString
+    POP HL
+
+    ; LD HL, 0x0000
+    ; LD DE, VDP_T2_CLEAR_SCREEN_MSG
+    ; CALL PutS_LN
 
  ;   LD B, 0
     ; LD C, 0x01
@@ -129,6 +147,7 @@ Main:
 .eventLoop:
     LD DE, MSG_PROMPT
     CALL PutS
+    
     CALL LineEdit
     LD DE, CR_LF; after line edit, start new line
     CALL PutS
@@ -139,16 +158,34 @@ Main:
     JP Z, .endLoop
     CP 0x00 ; 
     JP Z, .eventLoop ; empty line, nothing to display
-    CP '*'
-    JP Z, .dumpMem ; dump memory
-    CP '$'
-    JP Z, .clearScreen
-    CP '%'
-    JP Z, .stackPointerRead
-    CP '}'
-    JP Z, .charDisplay
-    CP ']'
-    JP Z, .crissCross
+
+;    PUSH BC
+    PUSH HL
+    LD BC, COMMAND_LIST
+    LD HL, LINE_EDIT_BUFFER_ADDRESS
+    CALL ParseCommand
+    EX HL, DE ; the jump to address (retruned in hl) is now in DE
+    POP HL
+;    POP BC
+    JP NZ, .parseError
+    CALL PutS_LN 
+
+    ; CP '*'
+    ; JP Z, .dumpMem ; dump memory
+    ; CP '$'
+    ; JP Z, .clearScreen
+    ; CP '%'
+    ; JP Z, .stackPointerRead
+    ; CP '}'
+    ; JP Z, .charDisplay
+    ; CP ']'
+    ; JP Z, .crissCross
+;    LD DE, LINE_EDIT_BUFFER_ADDRESS
+;    CALL PutS_LN
+    JP .eventLoop
+.parseError:
+    LD DE, PARSE_ERROR_MSG
+    CALL PutS
     LD DE, LINE_EDIT_BUFFER_ADDRESS
     CALL PutS_LN
     JP .eventLoop
@@ -156,10 +193,10 @@ Main:
 .crissCross:
     PUSH BC
     PUSH DE
-    LD BC, 80*7
+    LD BC, 80*22
 .crissCrossLoop:
-    LD A, R
-    AND 0x02
+    CALL CTC3_GetCounter
+    AND 0x01
     JP Z, .crisscrossChar2
     LD A, 0x8B
     JP .crisscrossNextStep
@@ -253,6 +290,8 @@ STREAM_MSG:
     DB "Stream Selected : ", 0x00
 MSG_PROMPT:
     DB "Z:\\>", 0x00
+PARSE_ERROR_MSG:
+    DB "Unknown Command : ", 0x00
 MEM_DUMP_ERROR:
     DB "Memory Dump Error : Invalid Address",0x00
 CHAR_DISP_ERROR:

@@ -26,13 +26,13 @@ PutC: ; Output character in A to standard output at (HL) to standard output
     PUSH AF
     PUSH BC
     LD B, A ; switch B and A as we work on A for stream_select comparison
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_SERIAL
     CALL NZ, SIO_PUTC
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_VDP
     CALL NZ, VDP_PUTC
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_PRINTER
     CALL NZ, PRINTER_PUTC
     POP BC
@@ -41,13 +41,13 @@ PutC: ; Output character in A to standard output at (HL) to standard output
 
 PutS: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
     PUSH AF
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_SERIAL
     CALL NZ, SIO_PUTS
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_VDP
     CALL NZ, VDP_PUTS
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_PRINTER
     CALL NZ, PRINTER_PUTS
     POP AF
@@ -55,25 +55,25 @@ PutS: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
 
 PutS_LN: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
     PUSH AF
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_SERIAL
     CALL NZ, SIO_PUTS_LN
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_VDP
     CALL NZ, VDP_PUTS_LN
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_OUT_PRINTER
     CALL NZ, PRINTER_PUTS_LN
     POP AF
     RET
 
 GetC: ; Input in A from standard input
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_IN_SERIAL
     CALL NZ, SIO_GETC
     OR A
     JR NZ, .GetC_Done ; if char received A is non zero
-    LD A, (STREAM_SELECT)
+    LD A, (STDIO_STREAM_SELECT)
     AND STREAM_IN_KEYBOARD
     CALL NZ, KBD_GETC
 .GetC_Done:
@@ -307,7 +307,7 @@ SCROLL_MANAGEMENT:
 ; read line from vram
     LD A, VRAM_READ_MODE
     CALL VDP_Set_VRAM_Address
-    LD DE, STDIO_MEMORY_START
+    LD DE, STDIO_SCROLL_MEMORY
     LD B, 80 ; number of bytes to read
 .readLoop:
     IN A, (VRAM_DATA)
@@ -322,7 +322,7 @@ SCROLL_MANAGEMENT:
     POP BC
     LD A, VRAM_WRITE_MODE
     CALL VDP_Set_VRAM_Address
-    LD DE, STDIO_MEMORY_START
+    LD DE, STDIO_SCROLL_MEMORY
     LD B, 80 ; number of bytes to write
 .writeLoop:
     LD A, (DE)
@@ -499,7 +499,7 @@ KBD_GETC:    ; Return key in A
     RET Z
     PUSH BC
     LD B, A ; store the received key in B
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     CP PURGE_DEAD_KEY
     JP Z, .purgeDeadKey:
     CP '^'
@@ -519,11 +519,11 @@ KBD_GETC:    ; Return key in A
     JP .exit
 .purgeDeadKey:
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, B
     JP .exit
 .newDeadKey:
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 0x00
     JP .exit
 .storedDeadKey:
@@ -549,15 +549,15 @@ KBD_GETC:    ; Return key in A
     JP .returnExtraDeadKey
 ;    JP .exit
 .compose_space:
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     LD B, A
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, B
     JP .exit
 .compose_A:
     LD B, A
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     CP '^'
     JP Z, .compose_AHat
     CP '¨'
@@ -568,22 +568,22 @@ KBD_GETC:    ; Return key in A
     JP .returnExtraDeadKey
 .compose_AHat: ;
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'â'
     JP .exit
 .compose_ATrema: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ä'
     JP .exit
 .compose_ATilde: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ã'
     JP .exit
 .compose_E:
     LD B, A
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     CP '^'
     JP Z, .compose_EHat
     CP '¨'
@@ -592,17 +592,17 @@ KBD_GETC:    ; Return key in A
     JP .returnExtraDeadKey
 .compose_EHat: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ê'
     JP .exit
 .compose_ETrema: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ë'
     JP .exit
 .compose_I:
     LD B, A
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     CP '^'
     JP Z, .compose_IHat
     CP '¨'
@@ -611,17 +611,17 @@ KBD_GETC:    ; Return key in A
     JP .returnExtraDeadKey
 .compose_IHat: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'î'
     JP .exit
 .compose_ITrema: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ï'
     JP .exit
 .compose_O:
     LD B, A
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     CP '^'
     JP Z, .compose_OHat
     CP '¨'
@@ -632,49 +632,49 @@ KBD_GETC:    ; Return key in A
     JP .returnExtraDeadKey
 .compose_OHat: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ô'
     JP .exit
 .compose_OTrema: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ö'
     JP .exit
 .compose_OTilde: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'õ'
     JP .exit
 .compose_U:
     LD B, A
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     CP '^'
     JP Z, .compose_UHat
     CP '¨'
     JP Z, .compose_UTrema
     LD A, B
     JP .returnExtraDeadKey
-.compose_UHat: ; #TODO DO THE ACTUAL COMPOSITION WITH ACCENT
+.compose_UHat: ;
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'û'
     JP .exit
-.compose_UTrema: ; #TODO DO THE ACTUAL COMPOSITION WITH ACCENT
+.compose_UTrema: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'ü'
     JP .exit
-.compose: ; #TODO DO THE ACTUAL COMPOSITION WITH ACCENT
+.compose: ; 
     LD A, 0x00
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, 'â'
     JP .exit
 .returnExtraDeadKey:
     CALL Keyboard_UngetKey
-    LD A, (DEAD_KEY)
+    LD A, (STDIO_DEAD_KEY)
     LD B, A
     LD A, PURGE_DEAD_KEY
-    LD (DEAD_KEY), A
+    LD (STDIO_DEAD_KEY), A
     LD A, B
 .exit:
     POP BC
@@ -692,10 +692,10 @@ ACCENTED_U:
     DB 'û', 'ü', '~u'
 
 
-STREAM_SELECT: ; bit 0 is serial, bit 1 is video, bit 2 is printer
-    DB 0x00
-DEAD_KEY:
-    DB 0x00
+; STDIO_STREAM_SELECT: ; bit 0 is serial, bit 1 is video, bit 2 is printer
+;     DB 0x00
+; STDIO_DEAD_KEY:
+;     DB 0x00
 
 
 

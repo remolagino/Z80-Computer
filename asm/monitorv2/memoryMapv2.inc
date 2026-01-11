@@ -30,9 +30,13 @@ KEYBOARD_RAM_START EQU LINE_EDIT_BUFFER_END + 0x0010 ; Start of Keyboard RAM are
     include "../lib/keyboard_memoryMap.inc"
 
 ; ======= STDIO Variables =======
-STDIO_MEMORY_START EQU KEYBOARD_RAM_END ; start of stdio memory area
-STDIO_MEMORY_SIZE EQU 128 ; size of stdio memory area
-STDIO_MEMORY_END EQU STDIO_MEMORY_START + STDIO_MEMORY_SIZE ; end of stdio memory area
+STDIO_MEMORY_START EQU KEYBOARD_RAM_END + 10; start of stdio memory area
+STDIO_STREAM_SELECT EQU STDIO_MEMORY_START
+STDIO_DEAD_KEY EQU STDIO_STREAM_SELECT + 1
+STDIO_CURSOR_IDX EQU STDIO_DEAD_KEY +1 ; word
+STDIO_SCROLL_MEMORY EQU STDIO_CURSOR_IDX + 2
+STDIO_SCROLL_MEMORY_SIZE EQU 128 ; size of stdio memory area
+STDIO_MEMORY_END EQU STDIO_SCROLL_MEMORY + STDIO_SCROLL_MEMORY_SIZE ; end of stdio memory area
 
 ; ======= Working Memory =======
 WORKING_MEMORY_START EQU STDIO_MEMORY_END ; start of working memory

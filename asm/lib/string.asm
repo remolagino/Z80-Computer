@@ -14,7 +14,7 @@
 ;
 
 
-    INCLUDE "serial.asm"
+ ;   INCLUDE "serial.asm"
 ;    include "./lib/stdio.asm"
     
 ; ------------------------------------------------------------
@@ -49,12 +49,17 @@ StringLength: ; Calculate the length of the string in HL, return in A
 ; ------------------------------------------------------------
 Hex2Str: ; convert a number to hex format (number in A, result in (HL), null terminated)
     PUSH DE
-    LD DE, HL
+    EX DE, HL
     CALL Byte2HexStr
+    LD A, 0x00
+    LD (DE), A
+    DEC DE
+    DEC DE
+    EX DE, HL
     POP DE
     RET
 
-Byte2HexStr: ; convert a number to hex format (number in A, result in (DE), DE at end of string, not null terminated)
+Byte2HexStr: ; convert a number to hex format (number in A, result in (DE-2), DE at end of string, not null terminated)
     PUSH AF
     SRL A ; Shift right to get the high nibble
     SRL A

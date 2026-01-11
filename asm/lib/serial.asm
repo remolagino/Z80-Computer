@@ -20,7 +20,17 @@ SIO_CTRL_A EQU SIO_ADDR + 2 ; A0 = 0 -> Channel A / A1 = 1 -> Cmd
 SIO_CTRL_B EQU SIO_ADDR + 3 ; A0 = 1 -> Channel B / A1 = 1 -> Cmd
 
 
+Init_CTC3: ; init CTC Channel 3
+    LD A, 0b01000101 ; no interrupt, counter mode, no prescaler, down edge, 
+                        ;auto start, next out is time constant, loop after end
+    OUT (CTC_CHANNEL_3), A
+    LD A, 100 ; time constant
+    OUT (CTC_CHANNEL_3), A
+    RET
 
+CTC3_GetCounter : ; read the value of the down counter in CTC3
+    IN A, (CTC_CHANNEL_3)
+    RET
 
 ; ------------------------------------------------------------
 InitSerial_A: ; initialisation of SIO Channel A (Terminal)

@@ -7,10 +7,9 @@
 
  
 KEYBOARD_IO_ADDRESS EQU 0x60 ; Keypad Columns address
-KEYBOARD_BUFFER_SIZE EQU 0x09 ; buffer length for keys
 
-     include "ringBuffer.asm"
-   include "keyboard_memoryMap.inc"
+    include "ringBuffer.asm"
+    include "keyboard_memoryMap.inc"
     include "keyboard.inc"
 
 
@@ -32,7 +31,7 @@ Keyboard_Init:
     PUSH BC
     PUSH HL
     LD HL, KEYBOARD_STATE
-    LD BC, KEYBOARD_ROWS * KEYBOARD_COLUMNS + 8 ; +1 for control keys column
+    LD B, KEYBOARD_ROWS * KEYBOARD_COLUMNS + 8 ; +1 for control keys column
     LD A, 0x00
 .initStateLoop:
     LD (HL), A
