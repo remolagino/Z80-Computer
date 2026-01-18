@@ -10,6 +10,10 @@ def send_line(line):
     print(f"Sent -> {line}")
     ser.write((line + "\r\n").encode('iso8859_15'))
 
+def send_eot():
+    ser.write(b'\x04')
+    print("EOT")
+    
 def send_ack():
     ser.write(b'\x06')
     print("ACK")
@@ -43,7 +47,7 @@ def main():
         else:
             send_line(f"Commande inconnue : {cmd}")
         time.sleep(0.1)
-        send_ack()
+        send_eot()
         # Ajoute "load", "save", etc. ici
 
 def cat(dir, arg):

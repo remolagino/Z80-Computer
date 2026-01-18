@@ -16,7 +16,8 @@
 ; Tokenizer
 
 
-MONITORV2_START_ADDRESS  EQU 0x5000
+; MONITORV2_START_ADDRESS  EQU 0x5000
+MONITORV2_START_ADDRESS  EQU 0x0000
 ;    include "../jumpTable.inc"
     include "memoryMapv2.inc"
 
@@ -26,21 +27,31 @@ MONITORV2_START_ADDRESS  EQU 0x5000
 ; RST Quick Call Management
     DS MONITORV2_START_ADDRESS + 0x0008 - $
     ORG MONITORV2_START_ADDRESS + 0x0008
+    LD A, 'A'
+    CALL SendChar_A
     RET
     DS MONITORV2_START_ADDRESS + 0x0010 - $
     ORG MONITORV2_START_ADDRESS + 0x0010
-    RET
+    JP (HL)
     DS MONITORV2_START_ADDRESS + 0x0018 - $
     ORG MONITORV2_START_ADDRESS + 0x0018
+    LD A, 'C'
+    CALL SendChar_A
     RET
     DS MONITORV2_START_ADDRESS + 0x0020 - $
     ORG MONITORV2_START_ADDRESS + 0x0020
+    LD A, 'D'
+    CALL SendChar_A
     RET
     DS MONITORV2_START_ADDRESS + 0x0028 - $
     ORG MONITORV2_START_ADDRESS + 0x0028
+    LD A, 'E'
+    CALL SendChar_A
     RET
     DS MONITORV2_START_ADDRESS + 0x0030 - $
     ORG MONITORV2_START_ADDRESS + 0x0030
+    LD A, 'F'
+    CALL SendChar_A
     RET
 ; Interrupt Mode 1 Management
     DS MONITORV2_START_ADDRESS + 0x0038 - $
@@ -53,7 +64,7 @@ DEFAULT_INTERRUPT_VECTOR:
     CALL PrintString
     RETI
 DEFAULT_INTERRUPT_VECTOR_MSG:
-    DB "Default Interrupt Routine", 0x00
+    DB "Default Interrupt Routine ", 0x00
 
     DB " < MONITOR V2 > ", 0x00
 
@@ -63,6 +74,8 @@ DEFAULT_INTERRUPT_VECTOR_MSG:
     include "lineEdit.asm"
     include "parseCmdLine.asm"
     include "commandList.asm"
+
+
 
 Main:
 ; MMU Init _Do Not Move
@@ -78,14 +91,20 @@ Main:
 ; MMU Init End
 
 ; Setup Stack pointer - Decomment when flashing in ROM
-;    LD SP, STACK_TOP
+    LD SP, STACK_TOP
 ; 
+; initialisation of SIO Channel A (Terminal)
+    CALL InitSerial_A
+; initialisation of SIO Channel B
+    CALL InitSerial_B  
+; initialise downcounter in CTC3
+    CALL Init_CTC3
 
     LD HL, CR_LF
     CALL PrintString
 
-;    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
-    LD A, STREAM_OUT_VDP|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
+    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
+;    LD A, STREAM_OUT_VDP|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
     LD (STDIO_STREAM_SELECT), A
     LD A, 0x00
     LD (STDIO_DEAD_KEY), A
@@ -100,7 +119,8 @@ Main:
     LD HL, DEFAULT_INTERRUPT_VECTOR
     LD (INTERRUPT_VECTOR), HL
     IM 1
-    EI
+    DI ; interrupt disable by default
+;    EI
 
 ; Initialisation of Keyboard
     CALL Keyboard_Init
@@ -116,9 +136,6 @@ Main:
     CALL PrintString
     POP HL
 
-; initialise downcounter in CTC3
-    CALL Init_CTC3
-
 ; Clear screen (pattern layout and color table in texte mode 2)
     CALL VDP_Clear_Screen
     PUSH HL
@@ -126,14 +143,14 @@ Main:
     CALL PrintString
     POP HL
 
-    PUSH HL
-    LD A, (STDIO_STREAM_SELECT)
-    LD HL, WORKING_MEMORY_START
-    CALL Hex2Str
-    CALL PrintString
-    LD HL, CR_LF
-    CALL PrintString
-    POP HL
+    ; PUSH HL
+    ; LD A, (STDIO_STREAM_SELECT)
+    ; LD HL, WORKING_MEMORY_START
+    ; CALL Hex2Str
+    ; CALL PrintString
+    ; LD HL, CR_LF
+    ; CALL PrintString
+    ; POP HL
 
     ; LD HL, 0x0000
     ; LD DE, VDP_T2_CLEAR_SCREEN_MSG
@@ -143,8 +160,11 @@ Main:
     ; LD C, 0x01
     ; CALL VDP_Set_Blink
 
+    CALL SerFS_Init ; TODO Make it more modular
 
 .eventLoop:
+    LD A, (DRIVE_LETTER)
+    CALL PutC
     LD DE, MSG_PROMPT
     CALL PutS
     
@@ -154,34 +174,19 @@ Main:
 
 ; command management
     LD A, (LINE_EDIT_BUFFER_ADDRESS)
-    CP '²'
-    JP Z, .endLoop
+    ; CP '²'
+    ; JP Z, .endLoop
     CP 0x00 ; 
     JP Z, .eventLoop ; empty line, nothing to display
 
-;    PUSH BC
-    PUSH HL
+    LD (CURSOR_IDX), HL ; to get back cursor index in the command
+
     LD BC, COMMAND_LIST
     LD HL, LINE_EDIT_BUFFER_ADDRESS
-    CALL ParseCommand
-    EX HL, DE ; the jump to address (retruned in hl) is now in DE
-    POP HL
-;    POP BC
-    JP NZ, .parseError
-    CALL PutS_LN 
+    CALL ParseAndExecCommand
+    LD HL, (CURSOR_IDX)
 
-    ; CP '*'
-    ; JP Z, .dumpMem ; dump memory
-    ; CP '$'
-    ; JP Z, .clearScreen
-    ; CP '%'
-    ; JP Z, .stackPointerRead
-    ; CP '}'
-    ; JP Z, .charDisplay
-    ; CP ']'
-    ; JP Z, .crissCross
-;    LD DE, LINE_EDIT_BUFFER_ADDRESS
-;    CALL PutS_LN
+    JP NZ, .parseError
     JP .eventLoop
 .parseError:
     LD DE, PARSE_ERROR_MSG
@@ -190,6 +195,10 @@ Main:
     CALL PutS_LN
     JP .eventLoop
 
+; .endLoop:
+;     LD HL, CR_LF
+;     CALL PrintString
+;     RET 
 .crissCross:
     PUSH BC
     PUSH DE
@@ -215,13 +224,13 @@ Main:
     JP .eventLoop
 .CRISSCROSS_MSG: DB 0x00
 
-.clearScreen:
-    CALL VDP_Clear_Screen
-    PUSH HL
-    LD HL, SERIAL_CLRSCR
-    CALL PrintString
-    POP HL
-    JP .eventLoop
+; .clearScreen:
+;     CALL VDP_Clear_Screen
+;     PUSH HL
+;     LD HL, SERIAL_CLRSCR
+;     CALL PrintString
+;     POP HL
+;     JP .eventLoop
 
 .charDisplay:
     PUSH HL
@@ -260,40 +269,35 @@ Main:
     JP .eventLoop
 .SP_STRING: DB "Stack Pointer : 0x0000", 0x00
 
-.dumpMem:
-    PUSH HL
-    LD HL, LINE_EDIT_BUFFER_ADDRESS +2 ; skip the first char
-    CALL StrW2Digits
-    JP NZ, .dumpMemError ; invalid number
-    LD HL, DE
-;    LD HL, 0x0000
-    LD DE, WORKING_MEMORY_START
-    CALL MemoryDump
-    POP HL
-    LD DE, WORKING_MEMORY_START
-    CALL PutS_LN
-    JP .eventLoop
-.dumpMemError:
-    POP HL
-    LD DE, MEM_DUMP_ERROR
-    CALL PutS_LN
-    JP .eventLoop
+; .dumpMem:
+;     PUSH HL
+;     LD HL, LINE_EDIT_BUFFER_ADDRESS +2 ; skip the first char
+;     CALL StrW2Digits
+;     JP NZ, .dumpMemError ; invalid number
+;     LD HL, DE
+; ;    LD HL, 0x0000
+;     LD DE, WORKING_MEMORY_START
+;     CALL MemoryDump
+;     POP HL
+;     LD DE, WORKING_MEMORY_START
+;     CALL PutS_LN
+;     JP .eventLoop
+; .dumpMemError:
+;     POP HL
+;     LD DE, MEM_DUMP_ERROR
+;     CALL PutS_LN
+;     JP .eventLoop
 
-.endLoop:
-    LD HL, CR_LF
-    CALL PrintString
-    RET 
+
 
 CR_LF:
     DB CR_KEY_CODE, LF_KEY_CODE, 0x00 ; Carriage return + line feed
 STREAM_MSG:
     DB "Stream Selected : ", 0x00
 MSG_PROMPT:
-    DB "Z:\\>", 0x00
+    DB ":\\>", 0x00
 PARSE_ERROR_MSG:
     DB "Unknown Command : ", 0x00
-MEM_DUMP_ERROR:
-    DB "Memory Dump Error : Invalid Address",0x00
 CHAR_DISP_ERROR:
     DB "Char Display : invalid number", 0x00
 VDP_T2_INIT_MSG:
@@ -307,6 +311,9 @@ LINEEDIT_INIT_MSG:
 
 SERIAL_CLRSCR:
     DB 0x1B, "[2J", 0x1B, "[H", 0x00 ; Clear screen and home cursor
+    DB "END OF THE MONITOR", 0x00
+
+    DS MONITORV2_START_ADDRESS + 0x2000 - $
 
 
     END 

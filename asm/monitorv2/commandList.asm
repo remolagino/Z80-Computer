@@ -1,9 +1,15 @@
     IFNDEF __COMMAND_LIST__
     DEFINE __COMMAND_LIST__ 1
 
+    include "../lib/string.asm"
+    include "memoryMapv2.inc"
+    include "FS_Serial.asm"
+
 ; List of commands for Monitor v2
 ; Format : - command as null-terminated string
 ;          - adress of the command routine as a WORD
+; HL Contains the address
+; DE contains the parameter
 
 COMMAND_LIST:
     DB "a:", 0x00   ; A Drive
@@ -18,6 +24,10 @@ COMMAND_LIST:
     DW Cmd_DriveC
     DB "C:", 0x00   ; C Drive
     DW Cmd_DriveC
+    DB "d:", 0x00   ; C Drive
+    DW Cmd_DriveD
+    DB "D:", 0x00   ; C Drive
+    DW Cmd_DriveD
     DB "echo", 0x00 ; Echo
     DW Cmd_Echo
     DB "exec", 0x00 ; Exec
@@ -51,40 +61,144 @@ COMMAND_LIST:
     DB 0xFF ; End of commands list
 
 Cmd_DriveA:
-    DB "Cmd_DriveA", 0x00
+    CALL SerFS_Init
+    XOR A ; set Z flag as true = success
+    RET
 Cmd_DriveB:
-    DB "Cmd_DriveB", 0x00
+    LD A, 'B'
+    LD (DRIVE_LETTER), A
+    LD A, FS_EEPROM
+    LD (FILE_SYSTEM), A
+;    CALL SerFS_Init
+    XOR A ; set Z flag as true = success
+    RET
 Cmd_DriveC:
-    DB "Cmd_DriveC", 0x00
+    LD A, 'C'
+    LD (DRIVE_LETTER), A
+    LD A, FS_SDCARD
+    LD (FILE_SYSTEM), A
+;    CALL SerFS_Init
+    XOR A ; set Z flag as true = success
+    RET
+
+Cmd_DriveD:
+    LD A, 'D'
+    LD (DRIVE_LETTER), A
+    LD A, FS_SDCARD
+    LD (FILE_SYSTEM), A
+;    CALL SerFS_Init
+    XOR A ; set Z flag as true = success
+    RET
+
 Cmd_Echo:
-    DB "Cmd_Echo", 0x00
+;    PUSH HL
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+;    POP HL
+    XOR A
+    RET
+
 Cmd_Exec:
-    DB "Cmd_Exec", 0x00
+    LD A, 0x01
+    OR A
+    RET
+
 Cmd_Dump:
-    DB "Cmd_Dump", 0x00
+;    LD HL, LINE_EDIT_BUFFER_ADDRESS +2 ; skip the first char
+    EX DE, HL
+    CALL StrW2Digits
+    JP NZ, .dumpMemError ; invalid number
+    ; LD HL, DE
+    LD HL, WORKING_MEMORY_START
+    EX DE, HL
+    CALL MemoryDump
+;    LD DE, WORKING_MEMORY_START
+    JP .exit
+.dumpMemError:
+    LD DE, DUMP_CMD_MEM_ERROR
+.exit:
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    LD A, 0x00
+    OR 0x00
+    RET
+
 Cmd_List:
-    DB "Cmd_List", 0x00
+    LD A, 0x00
+    OR 0x01
+    RET
 Cmd_Load:
-    DB "Cmd_Load", 0x00
+    LD A, 0x00
+    OR 0x01
+    RET
 Cmd_LoadTxt:
-    DB "Cmd_LoadTxt", 0x00
+    LD A, 0x00
+    OR 0x01
+    RET
 Cmd_Write:
-    DB "Cmd_Write", 0x00
+    LD A, 0x00
+    OR 0x01
+    RET
+
 Cmd_clrscr:
-    DB "Cmd_clrscr", 0x00
+    CALL VDP_Clear_Screen
+    LD HL, 0x0000
+    LD (CURSOR_IDX), HL
+    LD A, 0x00 ; set Z flag
+    OR A
+    RET
+
 Cmd_ls:
-    DB "Cmd_ls", 0x00
+    LD HL, (FS_CMD_LS)
+    CALL_HL
+    LD A, 0x00
+    OR 0x00
+    RET
+
 Cmd_cd:
-    DB "Cmd_cd", 0x00
+    LD HL, (FS_CMD_CD)
+    CALL_HL
+    LD A, 0x00
+    OR 0x00
+    RET
+
 Cmd_cwd:
-    DB "Cmd_cwd", 0x00
+    LD HL, (FS_CMD_CWD)
+    CALL_HL
+    LD A, 0x00
+    OR 0x00
+    RET
+
 Cmd_cat:
-    DB "Cmd_cat", 0x00
+    LD HL, (FS_CMD_CAT)
+    CALL_HL
+    LD A, 0x00
+    OR 0x00
+    RET
+
 Cmd_run:
-    DB "Cmd_run", 0x00
+    LD HL, (FS_CMD_RUN)
+    CALL_HL
+    LD A, 0x00
+    OR 0x00
+    RET
+
 Cmd_Help:
-    DB "Cmd_Help", 0x00
+    LD DE, CMD_HELP_MSG
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    LD A, 0x00
+    OR 0x00
+    RET
 
-
+CMD_HELP_MSG:
+    DB "Commands : echo, exec, dump, list, load, ldtx, write, clrscr, help, ?", 0x00 
+DUMP_CMD_MEM_ERROR:
+    DB "Memory Dump Error : Invalid Address",0x00
+RUN_CMD_FS_ERROR:
+    DB "Run Cmd Error : Unsupported FS",0x00
 
     ENDIF

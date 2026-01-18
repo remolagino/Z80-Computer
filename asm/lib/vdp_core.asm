@@ -102,7 +102,7 @@ VDP_Set_Blink: ; set or unset blink at address HL (in pattern layout) based on C
     RRCA
     DJNZ .shift_loop
     OUT (VRAM_DATA), A
-
+    NOP7
     POP HL
     POP DE
     POP BC
@@ -124,6 +124,9 @@ VDP_putC_VRAM: ; write at adress HL in Pattern layout table the character in reg
     POP AF
 
     OUT (VRAM_DATA), A
+    NOP
+    NOP
+    NOP
 
     POP HL
     POP DE

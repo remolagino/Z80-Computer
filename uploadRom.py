@@ -14,7 +14,8 @@ print(f"Chargement du fichier : {filename}")
     
 # Open serial port (adjust COM port for Windows or /dev/ttyUSBx for Linux/Mac)
 #ser = serial.Serial('COM3', 115200, timeout=1)  # Change COM3 to your port
-ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)  # Change COM3 to your port
+#ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)  # Change COM3 to your port
+ser = serial.Serial('com9', 115200, timeout=1)  # Change COM3 to your port
 time.sleep(2)  # Wait for the Arduino to reset
 
 def read_arduino_feedback():
@@ -60,8 +61,8 @@ chunk_size = 128  # Adjust depending on buffer size
 for i in range(0, len(data), chunk_size):
     ser.write(data[i:i+chunk_size])
     time.sleep(0.05)  # Give Arduino time to process
+    print(f"0x{i:04x} - ", end='')
     read_arduino_feedback()  # Lire les messages au fur et à mesure
-    print(i)
 print("File sent successfully!")
 read_arduino_feedback()  # Lire dernier message
 time.sleep(0.1)  # Pause pour laisser l'Arduino préparer les données

@@ -24,7 +24,7 @@
       "command": "python",
       "args": [
         "${workspaceFolder}/uploadRom.py",
-        "${fileDirname}/asm/${fileBasenameNoExtension}.bin"
+        "${fileDirname}/${fileBasenameNoExtension}.bin"
       ],
       "group": "build",
       "dependsOn": "Assemble Z80",
@@ -36,7 +36,7 @@
       "command": "python",
       "args": [
         "${workspaceFolder}/uploadFile.py",
-        "${fileDirname}/asm/${fileBasenameNoExtension}.bin"
+        "${fileDirname}/${fileBasenameNoExtension}.bin"
       ],
       "group": "build",
       "dependsOn": "Assemble Z80",

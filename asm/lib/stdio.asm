@@ -53,6 +53,20 @@ PutS: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
     POP AF
     RET
 
+PutS_Length: ; Output B characters of string in (DE) (0x00 terminated) at (HL) to standard output
+    PUSH AF
+    LD A, (STDIO_STREAM_SELECT)
+    AND STREAM_OUT_SERIAL
+    CALL NZ, SIO_PUTS_Length
+    LD A, (STDIO_STREAM_SELECT)
+    AND STREAM_OUT_VDP
+    CALL NZ, VDP_PUTS_Length
+    LD A, (STDIO_STREAM_SELECT)
+    AND STREAM_OUT_PRINTER
+    CALL NZ, PRINTER_PUTS_Length
+    POP AF
+    RET
+
 PutS_LN: ; Output string in (DE) (0x00 terminated) at (HL) to standard output
     PUSH AF
     LD A, (STDIO_STREAM_SELECT)
@@ -372,7 +386,7 @@ SIO_PUTS_LN: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
     POP BC
     RET
 
-SIO_PUTS: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
+SIO_PUTS: ; 
     PUSH BC
     PUSH DE
     PUSH HL
@@ -386,6 +400,32 @@ SIO_PUTS: ; #TODO# Problème sur l'adresse : ca tape dans le début du moniteur
     INC HL
     JP .loop ; Continue printing the string
 .end:
+    POP HL
+    POP DE
+    POP BC
+    RET
+
+SIO_PUTS_Length: ; Zero Flag set if last characters is reached
+    PUSH BC
+    PUSH DE
+    PUSH HL
+    LD HL, DE
+.loop:
+    LD A, (HL)
+    OR A
+    JP Z, .endOfString
+    PUSH BC
+    LD B, A
+    CALL SIO_PUTC ;
+    POP BC
+    INC HL
+    DJNZ .loop ; Continue printing the string
+    LD A, 0x01
+    OR A ; unset the Zero flag
+    JP .exit
+.endOfString:
+    XOR A ; set the zero flag
+.exit:
     POP HL
     POP DE
     POP BC
@@ -405,15 +445,59 @@ VDP_PUTS:
     PUSH AF
     PUSH BC
     PUSH DE
+    LD C, LINE_NUMBER
 .putsLoop:
     LD A, (DE)
+    LD B, A
     CP 0x00
     JP Z, .exit
-    LD B, A
+    CP 0x0A ; line feed
+    JR Z, .lineCounter
+.followLoop:
+;    LD B, A
     CALL VDP_PUTC
     INC DE
     ; INC HL
-    JP .putsLoop   
+    JP .putsLoop
+.lineCounter:
+    DEC C
+    LD A, C
+    OR A
+    JP Z, .pagePause
+    JP .followLoop
+.pagePause:
+    CALL GetC
+    OR A
+    JP Z, .pagePause
+    LD C, LINE_NUMBER
+    JP .followLoop
+.exit:
+    POP DE
+    POP BC
+    POP AF
+    RET
+LINE_NUMBER EQU 20
+
+VDP_PUTS_Length:
+    PUSH AF
+    PUSH BC
+    PUSH DE
+.putsLoop:
+    LD A, (DE)
+    CP 0x00
+    JP Z, .endOfString
+    PUSH BC
+    LD B, A
+    CALL VDP_PUTC
+    POP BC
+    INC DE
+    ; INC HL
+    DJNZ .putsLoop   
+    LD A, 0x01
+    OR A ; unset the Zero flag
+    JP .exit
+.endOfString:
+    XOR A ; set the zero flag
 .exit:
     POP DE
     POP BC
@@ -422,6 +506,7 @@ VDP_PUTS:
 
 PRINTER_PUTS_LN:
 PRINTER_PUTS:
+PRINTER_PUTS_Length
     RET
 
 SIO_GETC: ; get a character from serial, 0x00 is empty
