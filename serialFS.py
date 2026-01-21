@@ -4,23 +4,30 @@ from pathlib import Path
 
 comport = input("Entrez le port COM (par exemple COM6 ou /dev/ttyUSB1) : ")
 
-ser = serial.Serial(comport, 115200, timeout=1)
+ser = serial.Serial(comport, 57600, timeout=1)
 
 def send_line(line):
     print(f"Sent -> {line}")
     ser.write((line + "\r\n").encode('iso8859_15'))
+    time.sleep(0.002)
 
 def send_eot():
+    time.sleep(0.01)
     ser.write(b'\x04')
+    time.sleep(0.01)
     print("EOT")
     
 def send_ack():
+    time.sleep(0.01)
     ser.write(b'\x06')
+    time.sleep(0.01)
     print("ACK")
 
 def send_Nack():
+    time.sleep(0.01)
     print("NACK")
     ser.write(b'\x15')
+    time.sleep(0.01)
 
     
 def main():
@@ -45,8 +52,10 @@ def main():
         elif cmd == "cwd":
             send_line(f"Répertoire courant : {dir.as_posix()}")
         else:
+            send_Nack()
+#            time.sleep(0.001)
             send_line(f"Commande inconnue : {cmd}")
-        time.sleep(0.1)
+#        time.sleep(0.1)
         send_eot()
         # Ajoute "load", "save", etc. ici
 
@@ -69,6 +78,7 @@ def run(dir,arg):
 
     if not file.is_file():
         send_Nack()
+        time.sleep(0.001)
         send_line(f"{arg} n'est pas un fichier")
         return
     send_ack()
@@ -81,9 +91,10 @@ def run(dir,arg):
         chunk_size = 1  # Adjust depending on buffer size
         for i in range(0, len(data)): #, chunk_size):
             ser.write(data[i:i+chunk_size])
-            if i % 1 == 0:
+#            if i % 2 == 0:
 #                print(f"{i:04X} - {data[i]:02X}")
-                time.sleep(0.001)
+            time.sleep(0.002)
+#        time.sleep(0.01)
 
 def cd(dir, arg):
     tmpDir = Path(dir, arg)

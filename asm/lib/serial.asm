@@ -55,7 +55,7 @@ InitSerial_A: ; initialisation of SIO Channel A (Terminal)
     OUT (SIO_CTRL_A), A
 
     ; WR4: Async mode, 1 stop bit, no parity, x16 clock
-    LD A, 0b01000100     ; Async, 8-bit, 1 stop, x16 clock
+    LD A, 0b10000100     ; Async, 8-bit, 1 stop, x16 clock
     OUT (SIO_CTRL_A), A
 
     ; WR0: Select WR3
@@ -105,7 +105,7 @@ InitSerial_B: ; initialisation of SIO Channel B
     OUT (SIO_CTRL_B), A
 
     ; WR4: Async mode, 1 stop bit, no parity, x16 clock
-    LD A, 0b01000100     ; Async, 8-bit, 1 stop, x16 clock
+    LD A, 0b10000100     ; Async, 8-bit, 1 stop, x16 clock
     OUT (SIO_CTRL_B), A
 
     ; WR0: Select WR3

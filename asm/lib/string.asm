@@ -59,7 +59,7 @@ Hex2Str: ; convert a number to hex format (number in A, result in (HL), null ter
     POP DE
     RET
 
-Byte2HexStr: ; convert a number to hex format (number in A, result in (DE-2), DE at end of string, not null terminated)
+Byte2HexStr: ; convert a number to hex format (number in A, result in (DE), DE at the end of string, not null terminated)
     PUSH AF
     SRL A ; Shift right to get the high nibble
     SRL A
