@@ -84,10 +84,10 @@ SerFS_Cmd_run:
     LD DE, WORKING_MEMORY_START
     CALL ReceiveChar_B ; get the two bytes for the size
     LD B, A
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
     CALL ReceiveChar_B
     LD C, A
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
     LD A, 0x00
     LD (DE), A
     LD HL, (CURSOR_IDX)
@@ -121,7 +121,7 @@ SerFS_Cmd_run:
     JP .receive_loop
 .end_loop:
     CALL ReceiveChar_B ; fetch the EOT byte
-    CALL he
+;    CALL he
     LD HL, (CURSOR_IDX)
     LD DE, CMD_RUN_DOWNLOADED
     CALL PutS_LN

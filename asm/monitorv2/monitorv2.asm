@@ -103,7 +103,8 @@ Main:
     LD HL, CR_LF
     CALL PrintString
 
-    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
+    LD A, STREAM_OUT_VDP|STREAM_IN_KEYBOARD
+;    LD A, STREAM_OUT_VDP|STREAM_OUT_SERIAL|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
 ;    LD A, STREAM_OUT_VDP|STREAM_IN_KEYBOARD|STREAM_IN_SERIAL
     LD (STDIO_STREAM_SELECT), A
     LD A, 0x00
@@ -232,61 +233,42 @@ Main:
 ;     POP HL
 ;     JP .eventLoop
 
-.charDisplay:
-    PUSH HL
-    LD HL, LINE_EDIT_BUFFER_ADDRESS + 2
-    CALL StrB2Digits
-    JP NZ, .charDisplayError
- ;   LD A, E
-    LD DE, .CHAR_DISP_STRING + 13
-    CALL Byte2HexStr
-    LD DE, .CHAR_DISP_STRING + 19
-    LD (DE), A
-    LD DE, .CHAR_DISP_STRING
-    POP HL
-    CALL PutS_LN
-    JP .eventLoop
-.charDisplayError:
-    POP HL
-    LD DE, CHAR_DISP_ERROR
-    CALL PutS_LN
-    JP .eventLoop
-.CHAR_DISP_STRING: DB "Character (0x00) : _", 0x00
-
-.stackPointerRead:
-    PUSH HL
-    LD HL, 0xFF00
-    SBC HL, SP
-    LD DE, .SP_STRING+18
-    LD A, H
-    CALL Byte2HexStr
-    LD DE, .SP_STRING+20
-    LD A, L
-    CALL Byte2HexStr
-    POP HL
-    LD DE, .SP_STRING
-    CALL PutS_LN
-    JP .eventLoop
-.SP_STRING: DB "Stack Pointer : 0x0000", 0x00
-
-; .dumpMem:
+; .charDisplay:
 ;     PUSH HL
-;     LD HL, LINE_EDIT_BUFFER_ADDRESS +2 ; skip the first char
-;     CALL StrW2Digits
-;     JP NZ, .dumpMemError ; invalid number
-;     LD HL, DE
-; ;    LD HL, 0x0000
-;     LD DE, WORKING_MEMORY_START
-;     CALL MemoryDump
+;     LD HL, LINE_EDIT_BUFFER_ADDRESS + 2
+;     CALL StrB2Digits
+;     JP NZ, .charDisplayError
+;  ;   LD A, E
+;     LD DE, .CHAR_DISP_STRING + 13
+;     CALL Byte2HexStr
+;     LD DE, .CHAR_DISP_STRING + 19
+;     LD (DE), A
+;     LD DE, .CHAR_DISP_STRING
 ;     POP HL
-;     LD DE, WORKING_MEMORY_START
 ;     CALL PutS_LN
 ;     JP .eventLoop
-; .dumpMemError:
+; .charDisplayError:
 ;     POP HL
-;     LD DE, MEM_DUMP_ERROR
+;     LD DE, CHAR_DISP_ERROR
 ;     CALL PutS_LN
 ;     JP .eventLoop
+; .CHAR_DISP_STRING: DB "Character (0x00) : _", 0x00
+
+; .stackPointerRead:
+;     PUSH HL
+;     LD HL, 0xFF00
+;     SBC HL, SP
+;     LD DE, .SP_STRING+18
+;     LD A, H
+;     CALL Byte2HexStr
+;     LD DE, .SP_STRING+20
+;     LD A, L
+;     CALL Byte2HexStr
+;     POP HL
+;     LD DE, .SP_STRING
+;     CALL PutS_LN
+;     JP .eventLoop
+; .SP_STRING: DB "Stack Pointer : 0x0000", 0x00
 
 
 

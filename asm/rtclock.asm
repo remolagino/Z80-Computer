@@ -5,7 +5,7 @@
 
 
     include "./lib/serial.asm"
-    INCLUDE "./lib/I2C_2.asm"
+    INCLUDE "./lib/I2C.asm"
 
     STRUCT TIME
 SECOND  BYTE
@@ -54,8 +54,7 @@ RT_CLOCK_INIT_SUCCESS:
     DB 0x1B,"[32m", "Success",0x1B,"[0m", 0x00
 RT_CLOCK_INIT_FAIL:
     DB 0x1B,"[31m", "Failed",0x1B,"[0m", 0x00
-; RT_CLOCK_RESULT_CODE:
-;     DB 0x00
+
 
 DAYS_TABLE:
     DB "Mon", 0x00, "Tue", 0x00, "Wed", 0x00, "Thu", 0x00
@@ -69,7 +68,6 @@ RtClock_InitCheck: ; Z Flag set if success, error code in A
     JP Z, .rtclk_initCheck_success
     CALL I2C_Stop_condition
     LD A, '0'
-;    LD (RT_CLOCK_RESULT_CODE), A
     OR A
     RET
 .rtclk_initCheck_success:
@@ -78,9 +76,8 @@ RtClock_InitCheck: ; Z Flag set if success, error code in A
     OR A
     RET
 
-RtClock_GetTime: ; Get time in (HL) - HL to be reset after by user
-;    LD A, 0x00
-;    LD (RT_CLOCK_RESULT_CODE), A
+RtClock_GetTime: ; Get time in (HL)
+    PUSH HL
     CALL I2C_Start_condition
     LD A, RTCLOCK_I2C_ADDRESS ; RT Clk Address, Write
     CALL I2C_SendByte
@@ -129,10 +126,12 @@ RtClock_GetTime: ; Get time in (HL) - HL to be reset after by user
     CALL I2C_Stop_condition
     LD A, 0x00
     OR A
+    POP HL
     RET
 .getTimeError:
     CALL I2C_Stop_condition
     OR A
+    POP HL
     RET
 
 RtClock_SetTime: ; set time from (HL) - HL to be reset after by user

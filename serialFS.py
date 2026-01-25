@@ -91,6 +91,7 @@ def run(dir,arg):
         chunk_size = 1  # Adjust depending on buffer size
         for i in range(0, len(data)): #, chunk_size):
             ser.write(data[i:i+chunk_size])
+            ser.flush()
 #            if i % 2 == 0:
 #                print(f"{i:04X} - {data[i]:02X}")
             time.sleep(0.002)

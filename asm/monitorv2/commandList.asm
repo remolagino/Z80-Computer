@@ -52,6 +52,10 @@ COMMAND_LIST:
     DW Cmd_cwd
     DB "cat", 0x00 ; clear screen
     DW Cmd_cat
+    DB "peek", 0x00 ; clear screen
+    DW Cmd_peek
+    DB "poke", 0x00 ; clear screen
+    DW Cmd_poke    
     DB "run", 0x00 ; clear screen
     DW Cmd_run
     DB "help", 0x00 ; Help
@@ -104,10 +108,107 @@ Cmd_Exec:
     OR A
     RET
 
+Cmd_peek:
+    PUSH BC
+    PUSH DE
+    PUSH HL
+    EX DE, HL ; put the param in (HL)
+    CALL HexWord2Bin
+    JP NZ, .peekError ; invalid number
+    LD B, D ; store DE in BC
+    LD C, E
+    LD DE, WORKING_MEMORY_START
+    LD A, '('
+    LD (DE), A
+    INC DE
+    LD A, '0'
+    LD (DE), A
+    INC DE
+    LD A, 'x'
+    LD (DE), A
+    INC DE
+    LD A, (HL) ; copy the 4 char of the number to (DE)
+    LD (DE), A
+    INC DE
+    INC HL
+    LD A, (HL)
+    LD (DE), A
+    INC DE
+    INC HL
+    LD A, (HL)
+    LD (DE), A
+    INC DE
+    INC HL
+    LD A, (HL)
+    LD (DE), A
+    INC DE
+    INC HL
+    LD A, ')'
+    LD (DE), A
+    INC DE
+    LD A, '='
+    LD (DE), A
+    INC DE
+    LD A, '0'
+    LD (DE), A
+    INC DE
+    LD A, 'x'
+    LD (DE), A
+    INC DE
+    EX DE, HL
+    LD A, (BC)
+    CALL Bin2Hex_HL
+    LD DE, WORKING_MEMORY_START
+    JP .exit
+.peekError:
+    LD DE, PEEK_CMD_MEM_ERROR
+.exit:
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    LD A, 0x00
+    OR 0x00
+    POP HL
+    POP DE
+    POP BC
+    RET
+
+Cmd_poke:
+    PUSH BC
+    PUSH DE
+    PUSH HL
+    EX DE, HL ; put the param in (HL)
+    CALL HexWord2Bin
+    JP NZ, .pokeError ; invalid number
+    INC HL
+    INC HL
+    INC HL
+    INC HL
+    CALL HexByte2Bin
+    JP NZ, .pokeError ; invalid number
+    LD (DE), A
+    POP HL
+    POP DE
+    POP BC
+    CALL Cmd_peek
+    RET
+.pokeError:
+    LD DE, POKE_CMD_MEM_ERROR
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    LD A, 0x00
+    OR 0x00
+    POP HL
+    POP DE
+    POP BC
+    RET
+
+
 Cmd_Dump:
 ;    LD HL, LINE_EDIT_BUFFER_ADDRESS +2 ; skip the first char
     EX DE, HL
-    CALL StrW2Digits
+    CALL HexWord2Bin
     JP NZ, .dumpMemError ; invalid number
     ; LD HL, DE
     LD HL, WORKING_MEMORY_START
@@ -195,9 +296,15 @@ Cmd_Help:
     RET
 
 CMD_HELP_MSG:
-    DB "Commands : echo, exec, dump, list, load, ldtx, write, clrscr, help, ?", 0x00 
+    DB "Commands : cat, cd, clrscr, cwd, dump, echo, ls, peek, poke, run, help, ?", 0x00 
 DUMP_CMD_MEM_ERROR:
     DB "Memory Dump Error : Invalid Address",0x00
+PEEK_CMD_MEM_ERROR:
+    DB "Peek Error : Invalid Address", 0x00
+POKE_CMD_MEM_ERROR:
+    DB "Poke Error - format : poke AAAA NN", 0x00
+POKE_CMD_SUCCESS:
+    DB "Done", 0x00
 RUN_CMD_FS_ERROR:
     DB "Run Cmd Error : Unsupported FS",0x00
 

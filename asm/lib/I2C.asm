@@ -14,15 +14,14 @@ PIO_CTRL_A EQU PIO_ADDR + 2 ; A0 = 0 -> Channel A / A1 = 1 -> Cmd
 PIO_CTRL_B EQU PIO_ADDR + 3 ; A0 = 1 -> Channel B / A1 = 1 -> Cmd
 PIO_MODE3_CONTROL EQU 0b11001111 ; Set mode 3 control
 
-I2C_SDA_LINE EQU 0x01 ; 
-I2C_CLK_LINE EQU 0x02
-I2C_SDA_READ EQU I2C_SDA_LINE ; SDA line, High is input, clk line on b2
-I2C_SDA_WRITE EQU 0x00 ; SDA line, Low is output
-I2C_SCL_H_SDA_H EQU I2C_CLK_LINE + I2C_SDA_LINE
-I2C_SCL_H_SDA_L EQU I2C_CLK_LINE
-I2C_SCL_L_SDA_H EQU I2C_SDA_LINE
-I2C_SCL_L_SDA_L EQU 0x00
 
+I2C_SDA_LINE_BIT EQU 0
+I2C_SCL_LINE_BIT EQU 1
+
+
+
+I2C_PIO_STATUS:
+    DB 0xFF
 
 I2C_Delay: ; delay look - use B
     PUSH BC
@@ -33,180 +32,161 @@ I2C_Delay: ; delay look - use B
     POP BC
     RET
 
+I2C_Apply:
+    LD A, PIO_MODE3_CONTROL  ; Force Mode 3 (Bit Control)
+    OUT (PIO_CTRL_B), A
+    LD A, (I2C_PIO_STATUS)
+    OUT (PIO_CTRL_B), A ; Applique les directions (1=In, 0=Out)
+    RET
+
+SDA_HIGH: ; SDA line set as Input
+    PUSH AF
+    LD A, (I2C_PIO_STATUS)
+    SET I2C_SDA_LINE_BIT, A
+    LD (I2C_PIO_STATUS), A
+    CALL I2C_Apply
+    POP AF
+    RET
+
+SDA_LOW:
+    PUSH AF
+    LD A, (I2C_PIO_STATUS)
+    RES I2C_SDA_LINE_BIT, A
+    LD (I2C_PIO_STATUS), A
+    CALL I2C_Apply
+    XOR A
+    OUT (PIO_DATA_B), A
+    POP AF
+    RET
+
+SCL_HIGH:
+    PUSH AF
+    LD A, (I2C_PIO_STATUS)
+    SET I2C_SCL_LINE_BIT, A
+    LD (I2C_PIO_STATUS), A
+    CALL I2C_Apply
+    POP AF
+    RET
+
+SCL_LOW:
+    PUSH AF
+    LD A, (I2C_PIO_STATUS)
+    RES I2C_SCL_LINE_BIT, A
+    LD (I2C_PIO_STATUS), A
+    CALL I2C_Apply
+    XOR A
+    OUT (PIO_DATA_B), A
+    POP AF
+    RET
+
 I2C_Init: ; Init PIO for I2C
     PUSH AF
     LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
     OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE;
+    LD A, 0xFF; all PIO line to input; therefore scl and sda are high
+    LD (I2C_PIO_STATUS), A ; save the status
     OUT (PIO_CTRL_B), A
     LD A, 0x03 ; No interrupt, no mask
     OUT (PIO_CTRL_B), A
-;    LD A, 0x00; Interrupt vector (not use in fact)
-;    OUT (PIO_CTRL_B), A
-    LD A, I2C_SCL_H_SDA_H ; CLK high, SDA high
-    OUT (PIO_DATA_B), A
     POP AF
     RET
 
 I2C_Start_condition: ; send start condition
     PUSH AF
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE;
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SCL_H_SDA_H ; CLK high, SDA high
-    OUT (PIO_DATA_B), A
-    LD A, I2C_SCL_H_SDA_L
-    OUT (PIO_DATA_B), A
-    LD A, I2C_SCL_L_SDA_L
-    OUT (PIO_DATA_B), A
+    CALL SDA_HIGH
+    CALL SCL_HIGH
+    CALL SDA_LOW
+    CALL I2C_Delay
+    CALL SCL_LOW
     CALL I2C_Delay
     POP AF
     RET
 
 I2C_Restart_condition: ; send restart condition
     PUSH AF
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE;
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SCL_L_SDA_H ; CLK low, SDA high
-    OUT (PIO_DATA_B), A
-    LD A, I2C_SCL_H_SDA_H ; CLK high, SDA high
-    OUT (PIO_DATA_B), A
-    LD A, I2C_SCL_H_SDA_L
-    OUT (PIO_DATA_B), A
-    LD A, I2C_SCL_L_SDA_L
-    OUT (PIO_DATA_B), A
+    CALL SDA_HIGH     ; Relâcher SDA (entrée/pull-up)
+    CALL I2C_Delay
+    CALL SCL_HIGH     ; Remonter SCL
+    CALL I2C_Delay
+    CALL SDA_LOW      ; SDA tombe alors que SCL est haut (START)
+    CALL I2C_Delay
+    CALL SCL_LOW      ; Verrouiller le bus pour l'octet suivant
     CALL I2C_Delay
     POP AF
     RET
 
 I2C_Stop_condition: ; send Stop condition
     PUSH AF
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE;
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SCL_H_SDA_L ; CLK high, SDA low
-    OUT (PIO_DATA_B), A
-    LD A, I2C_SCL_H_SDA_H
-    OUT (PIO_DATA_B), A
+    CALL SDA_LOW
+    CALL I2C_Delay
+    CALL SCL_HIGH
+    CALL I2C_Delay
+    CALL SDA_HIGH
     CALL I2C_Delay
     POP AF
     RET
 
 I2C_SendByte: ; byte to send in A - Ack result in Flag Z (Ack=Z) - use A
     PUSH BC
-    PUSH DE
-    LD C, A
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE; Switch to write on SDA pin
-    OUT (PIO_CTRL_B), A
-    LD B, 0b10000000
-    LD A, I2C_SCL_L_SDA_L
-    OUT (PIO_DATA_B), A ; maybe unnecessary
-.I2C_SendByteLoop:
-    LD A, B
-    AND C
-    JP Z, .I2C_SendClk
-    LD A, I2C_SDA_LINE ; set SDA value at high
-.I2C_SendClk:
-    OUT (PIO_DATA_B), A ; position SDA according to bit
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; rising clock pulse
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; falling clock pulse
-    SRL B
-    JP NZ, .I2C_SendByteLoop
-.I2C_Receive_Ack: ; Ack result in Flag Z (Ack=Z)
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_READ; Switch to read on SDA pin
-    OUT (PIO_CTRL_B), A
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; rising clock pulse
-
-    AND I2C_CLK_LINE ; keep the clock state
-    LD D, A ; save the last out state
-
+    LD B, 8
+.sendByteLoop:    
+    RLA
+    JP C, .sendOne
+    CALL SDA_LOW
+    JP .clock
+.sendOne:
+    CALL SDA_HIGH
+.clock:
+    CALL SCL_HIGH
+    CALL SCL_LOW
+    DJNZ .sendByteLoop
+.receiveAck:
+    CALL SDA_HIGH ; release SDA line
+    CALL SCL_HIGH
     IN A, (PIO_DATA_B)
-    LD B, A ; save the input in B. Ack in bit SDA (0:ack, 1: nack)
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE; Switch to write on SDA pin
-    OUT (PIO_CTRL_B), A
-    LD A, D
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; falling clock pulse
-
-    LD A, I2C_SDA_LINE
-    AND B ; Save ACK result in flag Z
-    CALL I2C_Delay
-    POP DE
+    CALL SCL_LOW
+    BIT I2C_SDA_LINE_BIT, A; set the zero flag for ack
     POP BC
     RET
 
 
 I2C_ReceiveByte: ; byte received in A
     PUSH BC
-    PUSH DE
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_READ; Switch to read on SDA pin
-    OUT (PIO_CTRL_B), A
-    LD B, 0x08
-    LD C, 0x00
-    LD A, I2C_SCL_L_SDA_L
-    OUT (PIO_DATA_B), A ; maybe unnecessary
-.I2C_ReceiveByteLoop:
-    SLA C
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; rising clock pulse
+    LD B, 8
+    LD C, 0 ; receive the byte
+    CALL SDA_HIGH
+    CALL SCL_LOW
+.receiveByteLoop:
+;    CALL I2C_Delay
+    CALL SCL_HIGH
+    CALL I2C_Delay
     IN A, (PIO_DATA_B)
-    BIT 0, A ; look at received bit in SDA
-    JP Z, .I2C_receive_continue
-    LD D, A ; save A in D
-    LD A, 0x01 ; put 1 in C
-    OR C
-    LD C, A
-    LD A, D
-.I2C_receive_continue:
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; falling clock pulse
-    DJNZ .I2C_ReceiveByteLoop
+    OR A ; clear carry and zero flag
+    BIT I2C_SDA_LINE_BIT, A
+    JP Z, .shiftZero
+    SCF ; prepare the one
+.shiftZero:
+    RL C
+    CALL SCL_LOW
+    DJNZ .receiveByteLoop
     LD A, C
-    POP DE
     POP BC
     RET
 
 I2C_Send_Ack: ; send ACK after receive - use A, B
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE; Switch to write on SDA pin
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SCL_L_SDA_L
-    OUT (PIO_DATA_B), A ; prepare for ack
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; rising clock pulse
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; falling clock pulse
+    CALL SDA_LOW
+    CALL SCL_HIGH
     CALL I2C_Delay
+    CALL SCL_LOW
+;    CALL I2C_Delay
     RET
 
 I2C_Send_NAck: ; send NACK after receive - use A, B
-    LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SDA_WRITE; Switch to write on SDA pin
-    OUT (PIO_CTRL_B), A
-    LD A, I2C_SCL_L_SDA_H
-    OUT (PIO_DATA_B), A ; prepare for ack
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; rising clock pulse
-    XOR I2C_CLK_LINE
-    OUT (PIO_DATA_B), A ; falling clock pulse
+    CALL SDA_HIGH
+    CALL SCL_HIGH
     CALL I2C_Delay
+    CALL SCL_LOW
+;    CALL I2C_Delay
     RET
 
     ENDIF

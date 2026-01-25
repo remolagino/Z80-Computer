@@ -47,10 +47,10 @@ StringLength: ; Calculate the length of the string in HL, return in A
     RET
 
 ; ------------------------------------------------------------
-Hex2Str: ; convert a number to hex format (number in A, result in (HL), null terminated)
+Bin2Hex_HL: ; convert a number to hex format (number in A, result in (HL), null terminated)
     PUSH DE
     EX DE, HL
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
     LD A, 0x00
     LD (DE), A
     DEC DE
@@ -59,7 +59,7 @@ Hex2Str: ; convert a number to hex format (number in A, result in (HL), null ter
     POP DE
     RET
 
-Byte2HexStr: ; convert a number to hex format (number in A, result in (DE), DE at the end of string, not null terminated)
+Bin2Hex_DE: ; convert a number to hex format (number in A, result in (DE), DE at the end of string, not null terminated)
     PUSH AF
     SRL A ; Shift right to get the high nibble
     SRL A
@@ -117,9 +117,9 @@ MemoryDump: ;Memory Dump in hex format (address in HL, always 16 x16 bytes, Resu
     LD C, 0x10 ; Number of rows to print
 .printHexRowStart:
     LD A, H
-    CALL Byte2HexStr ; Convert H to hex 
+    CALL Bin2Hex_DE ; Convert H to hex 
     LD A, L
-    CALL Byte2HexStr ; Convert Lto hex 
+    CALL Bin2Hex_DE ; Convert Lto hex 
     LD A ,' '
     LD (DE), A
     INC DE
@@ -134,7 +134,7 @@ MemoryDump: ;Memory Dump in hex format (address in HL, always 16 x16 bytes, Resu
     PUSH HL ; Store HL address for char loop
 .printHexLoop:
     LD A, (HL)
-    CALL Byte2HexStr ; Convert to hex and copy to DE
+    CALL Bin2Hex_DE ; Convert to hex and copy to DE
     LD A, ' '
     LD (DE), A
     INC DE
@@ -202,7 +202,7 @@ SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
     DEC HL ; Decrement buffer pointer
     RET
 
-Char2Digit: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a number negative
+HexChar2Bin: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a number negative
     XOR 0x30 ; check if line 3x
     CP 0x0A ; Check if num betwwen 0 and 9
     RET M ; 
@@ -227,15 +227,16 @@ Char2Digit: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a
     RET
 
 ; -------------------------------------------
-StrW2Digits: ;Convert a word in hexstring (in (HL)) to a number (in DE) Zero flag Z is success
+HexWord2Bin: ;Convert a word in hexstring (in (HL)) to a number (in DE) Zero flag Z is success
     PUSH BC
 ;    PUSH DE
     CALL SpaceRemoval
+    PUSH HL
     LD DE, 0x0000; initialize DE to 0
     LD B, 3 ; Number of bytes to read
 .char2digitLoop:
     LD A, (HL) ; Read the first character
-    CALL Char2Digit ; Convert to number
+    CALL HexChar2Bin ; Convert to number
     OR A ; initialise sign flag
     JP M, .notANumber
     OR E
@@ -251,7 +252,7 @@ StrW2Digits: ;Convert a word in hexstring (in (HL)) to a number (in DE) Zero fla
     INC HL ; Increment HL to get the next characters
     DJNZ .char2digitLoop ; Loop for 4 characters
     LD A, (HL) ; Read the last character
-    CALL Char2Digit ; Convert to number
+    CALL HexChar2Bin ; Convert to number
     OR A ; initialise sign flag
     JP M, .notANumber
     OR E  
@@ -271,18 +272,20 @@ StrW2Digits: ;Convert a word in hexstring (in (HL)) to a number (in DE) Zero fla
     OR A ; Set Zero flag to Z indicate success 
 .end:
 ;    POP DE
+    POP HL
     POP BC
     RET
 
-StrB2Digits: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag Z is success
+HexByte2Bin: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag Z is success
     PUSH BC
 ;    PUSH DE
     CALL SpaceRemoval
+    PUSH HL
     ; LD DE, 0x0000; initialize DE to 0
 ;     LD B, 3 ; Number of bytes to read
 ; .char2digitLoop:
     LD A, (HL) ; Read the first character
-    CALL Char2Digit ; Convert to number
+    CALL HexChar2Bin ; Convert to number
     OR A ; initialise sign flag
     JP M, .notANumber
     RLCA
@@ -293,7 +296,7 @@ StrB2Digits: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag
     INC HL ; Increment HL to get the next characters
     ; DJNZ .char2digitLoop ; Loop for 4 characters
     LD A, (HL) ; Read the last character
-    CALL Char2Digit ; Convert to number
+    CALL HexChar2Bin ; Convert to number
     OR A ; initialise sign flag
     JP M, .notANumber
     OR B  
@@ -314,10 +317,11 @@ StrB2Digits: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag
     LD A, B ; put the result in A
 .end:
 ;    POP DE
+    POP HL
     POP BC
     RET
 
-Hex2BCD: ; Convert a hex number in E to BCD in HL
+Bin2BCD: ; Convert a hex number in E to BCD in HL
     PUSH BC
     PUSH DE
     LD HL, 0x0000
