@@ -18,10 +18,10 @@ PIO_MODE3_CONTROL EQU 0b11001111 ; Set mode 3 control
 I2C_SDA_LINE_BIT EQU 0
 I2C_SCL_LINE_BIT EQU 1
 
+    INCLUDE "../monitorv2/memoryMapv2.inc"
 
-
-I2C_PIO_STATUS:
-    DB 0xFF
+; I2C_PIO_STATUS:
+;     DB 0xFF
 
 I2C_Delay: ; delay look - use B
     PUSH BC

@@ -4,8 +4,8 @@
     DEFINE __EEPROM__ 1
 
 
-    INCLUDE "jumpTable.inc"
-    INCLUDE "I2C.asm"
+;    INCLUDE "jumpTable.inc"
+    INCLUDE "./lib/I2C.asm"
 
 
 EEPROM_I2C_ADDRESS EQU 0xAE
@@ -13,9 +13,9 @@ EEPROM_I2C_ADDRESS EQU 0xAE
 EEPROM_INIT_MSG:
     DB "Init EEPROM : ", 0x00
 EEPROM_INIT_SUCCESS:
-    DB 0x1B,"[32m", "Success",0x1B,"[0m", 0x00
+    DB "Success", 0x00
 EEPROM_INIT_FAIL:
-    DB 0x1B,"[31m", "Failed",0x1B,"[0m", 0x00
+    DB "Failed", 0x00
 EEPROM_RESULT_CODE:
     DB 0x00
 

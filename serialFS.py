@@ -41,6 +41,7 @@ def main():
             continue
         print(f"Received -> {line}")
         cmd, _, arg = line.partition(" ")
+        arg = arg.strip()
         if cmd == "ls":
             ls(dir, arg)
         elif cmd == "cd":

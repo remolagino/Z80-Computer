@@ -34,7 +34,7 @@ COMMAND_LIST:
     DW Cmd_Exec
     DB "dump", 0x00 ; Dump
     DW Cmd_Dump
-    DB "list", 0x00 ; Dump
+    DB "list", 0x00 ; List
     DW Cmd_List
     DB "load", 0x00 ; Load
     DW Cmd_Load
@@ -42,6 +42,8 @@ COMMAND_LIST:
     DW Cmd_LoadTxt
     DB "write", 0x00 ; Write
     DW Cmd_Write
+    DB "clk", 0x00 ; print time
+    DW Cmd_Clk
     DB "clrscr", 0x00 ; clear screen
     DW Cmd_clrscr
     DB "ls", 0x00 ; clear screen
@@ -105,6 +107,38 @@ Cmd_Echo:
 
 Cmd_Exec:
     LD A, 0x01
+    OR A
+    RET
+
+Cmd_Clk:
+    PUSH DE
+    PUSH HL
+    CALL RtClock_Init
+    CALL NZ, .rtClockFail
+
+    LD HL, WORKING_MEMORY_START
+    CALL RtClock_GetDS3231Data
+ ;   POP HL
+    JP NZ, .rtClockFail
+    
+    LD DE, WORKING_MEMORY_START + 20
+    CALL RtClock_GetDateTime
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    JP .rtClockExit
+.rtClockFail:
+    LD HL, (CURSOR_IDX)
+    LD DE, RTCLOCK_FAIL
+    CALL PutS
+    CALL PutC
+    LD DE, CR_LF
+    CALL PutS
+    LD (CURSOR_IDX), HL
+.rtClockExit:
+    POP HL
+    POP DE
+    LD A, 0x00
     OR A
     RET
 
@@ -296,7 +330,7 @@ Cmd_Help:
     RET
 
 CMD_HELP_MSG:
-    DB "Commands : cat, cd, clrscr, cwd, dump, echo, ls, peek, poke, run, help, ?", 0x00 
+    DB "Commands : cat, cd, clk, clrscr, cwd, dump, echo, ls, peek, poke, run, help, ?", 0x00 
 DUMP_CMD_MEM_ERROR:
     DB "Memory Dump Error : Invalid Address",0x00
 PEEK_CMD_MEM_ERROR:

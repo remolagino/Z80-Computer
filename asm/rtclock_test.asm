@@ -9,11 +9,10 @@
     JP Main
 
 ;    INCLUDE "jumpTable.inc"
-    INCLUDE "rtclock.asm"
+    INCLUDE "./lib/rtclock.asm"
     INCLUDE "./lib/string.asm"
     INCLUDE "./lib/stdio.asm"
     INCLUDE "./monitorv2/memoryMapv2.inc"
-;    INCLUDE "I2C.asm"
 
 ; I2C_EEPROM_ADDRESS EQU 0xAE
 ; I2C_RAND_ADDRESS EQU 0x84
@@ -21,16 +20,23 @@
 
 
 Main:
-    CALL I2C_Init
+ ;   CALL I2C_Init
 
-    CALL RtClock_InitCheck
+    CALL RtClock_Init
     CALL NZ, .setTestFail
 
     LD HL, TIME_TEST
-    CALL RtClock_GetTime
+    CALL RtClock_GetDS3231Data
  ;   POP HL
     JP NZ, .getTimeFail
-    CALL PrintTime
+    
+    LD DE, RTCLK_WORK_MEM
+    CALL RtClock_GetDateTime
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+
+;    CALL PrintTime
     ; LD HL, LF_CR
     ; CALL PrintString
     RET
@@ -53,39 +59,24 @@ Main:
     LD (CURSOR_IDX), HL
     RET
 
-Day2Str: ; in : DE point to DAYS_TABLE - out : DE point to day
-    PUSH HL
-    EX DE, HL
-    LD A, (TIME_TEST.DOW)
-    DEC A
-    JP Z, .end
-    LD B, A
-    LD DE, 0x0004
-.loop:
-    ADD HL, DE
-    DJNZ .loop
-.end:
-    EX DE, HL
-    POP HL
-    RET
 
 PrintTime:
     LD HL, (CURSOR_IDX)
-    LD DE, DAYS_TABLE
-    CALL Day2Str
+    LD A, (TIME_TEST.TIME.DOW)
+    CALL RtClock_Day2Str
     CALL PutS
     LD A, ' '
     CALL PutC
-    LD A, (TIME_TEST.DATE)
+    LD A, (TIME_TEST.TIME.DATE)
     LD DE, RTCLK_WORK_MEM
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
     LD DE, RTCLK_WORK_MEM
     CALL PutS
     LD A, '/'
     CALL PutC
-    LD A, (TIME_TEST.MONTH)
+    LD A, (TIME_TEST.TIME.MONTH)
     LD DE, RTCLK_WORK_MEM
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
     LD DE, RTCLK_WORK_MEM
     CALL PutS
     LD A, '/'
@@ -94,36 +85,34 @@ PrintTime:
     CALL PutC
     LD A, '0'
     CALL PutC
-    LD A, (TIME_TEST.YEAR)
+    LD A, (TIME_TEST.TIME.YEAR)
     LD DE, RTCLK_WORK_MEM
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
     LD DE, RTCLK_WORK_MEM
     CALL PutS
     LD A, ' '
     CALL PutC
-    LD A, (TIME_TEST.HOUR)
+    LD A, (TIME_TEST.TIME.HOUR)
     LD DE, RTCLK_WORK_MEM
-    CALL Byte2HexStr
-    LD DE, RTCLK_WORK_MEM
-    CALL PutS
-    LD A, ':'
-    CALL PutC
-    LD A, (TIME_TEST.MINUTE)
-    LD DE, RTCLK_WORK_MEM
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
     LD DE, RTCLK_WORK_MEM
     CALL PutS
     LD A, ':'
     CALL PutC
-    LD A, (TIME_TEST.SECOND)
+    LD A, (TIME_TEST.TIME.MINUTE)
     LD DE, RTCLK_WORK_MEM
-    CALL Byte2HexStr
+    CALL Bin2Hex_DE
+    LD DE, RTCLK_WORK_MEM
+    CALL PutS
+    LD A, ':'
+    CALL PutC
+    LD A, (TIME_TEST.TIME.SECOND)
+    LD DE, RTCLK_WORK_MEM
+    CALL Bin2Hex_DE
     LD DE, RTCLK_WORK_MEM
     CALL PutS_LN
     LD (CURSOR_IDX), HL
     RET
-
-TIME_TEST TIME
 
 TIME_SET_TEST:
     DB "Time Set test failed : ", 0x00
@@ -144,8 +133,9 @@ I2C_RESULT_SUCCESS:
 I2C_RESULT_FAIL:
     DB "Fail", 0x00
 
+TIME_TEST DS3231
+    DB "@"
 RTCLK_WORK_MEM:
-    DB 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    DS 20, '.'
 
-RT_CLOCK_RESULT TIME
 

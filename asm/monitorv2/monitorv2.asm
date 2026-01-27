@@ -11,15 +11,11 @@
 ; 6. Execute command
 ; 7. Loop to 4
 ;
-; TODO :
-; Allow for interruptio mode 1
-; Tokenizer
+;
 
 
 ; MONITORV2_START_ADDRESS  EQU 0x5000
 MONITORV2_START_ADDRESS  EQU 0x0000
-;    include "../jumpTable.inc"
-    include "memoryMapv2.inc"
 
     ORG MONITORV2_START_ADDRESS
     DI
@@ -67,9 +63,12 @@ DEFAULT_INTERRUPT_VECTOR_MSG:
     DB "Default Interrupt Routine ", 0x00
 
     DB " < MONITOR V2 > ", 0x00
+;    include "../jumpTable.inc"
+    include "memoryMapv2.inc"
 
     include "../lib/MMU.asm"
     include "vdp_t2_init.asm"
+    include "../lib/rtclock.asm"
     include "../lib/stdio.asm"
     include "lineEdit.asm"
     include "parseCmdLine.asm"
@@ -139,28 +138,36 @@ Main:
 
 ; Clear screen (pattern layout and color table in texte mode 2)
     CALL VDP_Clear_Screen
+    LD (CURSOR_IDX), HL
     PUSH HL
     LD HL, VDP_T2_CLEAR_SCREEN_MSG
     CALL PrintString
     POP HL
 
-    ; PUSH HL
-    ; LD A, (STDIO_STREAM_SELECT)
-    ; LD HL, WORKING_MEMORY_START
-    ; CALL Hex2Str
-    ; CALL PrintString
-    ; LD HL, CR_LF
-    ; CALL PrintString
-    ; POP HL
+    CALL RtClock_Init
+    CALL NZ, .rtClockFail
 
-    ; LD HL, 0x0000
-    ; LD DE, VDP_T2_CLEAR_SCREEN_MSG
-    ; CALL PutS_LN
+    LD HL, WORKING_MEMORY_START
+    CALL RtClock_GetDS3231Data
+ ;   POP HL
+    JP NZ, .rtClockFail
+    
+    LD DE, WORKING_MEMORY_START + 20
+    CALL RtClock_GetDateTime
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    JP .fsInit
+.rtClockFail:
+    LD HL, (CURSOR_IDX)
+    LD DE, RTCLOCK_FAIL
+    CALL PutS
+    CALL PutC
+    LD DE, CR_LF
+    CALL PutS
+    LD (CURSOR_IDX), HL
 
- ;   LD B, 0
-    ; LD C, 0x01
-    ; CALL VDP_Set_Blink
-
+.fsInit:
     CALL SerFS_Init ; TODO Make it more modular
 
 .eventLoop:
@@ -225,13 +232,6 @@ Main:
     JP .eventLoop
 .CRISSCROSS_MSG: DB 0x00
 
-; .clearScreen:
-;     CALL VDP_Clear_Screen
-;     PUSH HL
-;     LD HL, SERIAL_CLRSCR
-;     CALL PrintString
-;     POP HL
-;     JP .eventLoop
 
 ; .charDisplay:
 ;     PUSH HL
@@ -282,6 +282,8 @@ PARSE_ERROR_MSG:
     DB "Unknown Command : ", 0x00
 CHAR_DISP_ERROR:
     DB "Char Display : invalid number", 0x00
+RTCLOCK_FAIL:
+    DB "RTClock Error : ", 0x00
 VDP_T2_INIT_MSG:
     DB "VDP T2 Initialized", CR_KEY_CODE, LF_KEY_CODE, 0x00
 VDP_T2_CLEAR_SCREEN_MSG:
@@ -295,7 +297,7 @@ SERIAL_CLRSCR:
     DB 0x1B, "[2J", 0x1B, "[H", 0x00 ; Clear screen and home cursor
     DB "END OF THE MONITOR", 0x00
 
-    DS MONITORV2_START_ADDRESS + 0x2000 - $
+    DS MONITORV2_START_ADDRESS + 0x3000 - $
 
 
     END 
