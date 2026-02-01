@@ -241,4 +241,27 @@ ReceiveChar_B:     ; Wait for a character on Port B to be received (stored in A)
     IN A, (SIO_DATA_B)         ; Read character
     RET
 
+ReceiveChar_B_TO_:     ; Wait for a character on Port B to be received (stored in A) TimeOut NZ
+    PUSH BC
+    LD BC, 0xFFF0
+.wait:
+    LD A, B
+    OR C
+    JP Z, .timeOut
+    DEC BC
+    LD A, 0
+    OUT (SIO_CTRL_B), A        ; RR0
+    IN A, (SIO_CTRL_B)
+    BIT 0, A             ; RX char available ?
+    JP Z, .wait
+
+    XOR A ; set Z flag
+    IN A, (SIO_DATA_B)         ; Read character
+    POP BC
+    RET
+.timeOut:
+    LD A, 0x01   
+    OR A ; set NZ flag
+    POP BC
+    RET
     ENDIF

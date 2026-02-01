@@ -18,6 +18,9 @@ PIO_MODE3_CONTROL EQU 0b11001111 ; Set mode 3 control
 I2C_SDA_LINE_BIT EQU 0
 I2C_SCL_LINE_BIT EQU 1
 
+I2C_READ EQU 1
+I2C_WRITE EQU 0
+
     INCLUDE "../monitorv2/memoryMapv2.inc"
 
 ; I2C_PIO_STATUS:
@@ -150,7 +153,7 @@ I2C_SendByte: ; byte to send in A - Ack result in Flag Z (Ack=Z) - use A
     RET
 
 
-I2C_ReceiveByte: ; byte received in A
+I2C_ReceiveByte: ; byte received in A ; flag Z cleared
     PUSH BC
     LD B, 8
     LD C, 0 ; receive the byte
@@ -169,6 +172,8 @@ I2C_ReceiveByte: ; byte received in A
     RL C
     CALL SCL_LOW
     DJNZ .receiveByteLoop
+    LD A, 0x00
+    OR A
     LD A, C
     POP BC
     RET

@@ -1,6 +1,7 @@
 import serial
 import time
 from pathlib import Path
+from datetime import datetime
 
 comport = input("Entrez le port COM (par exemple COM6 ou /dev/ttyUSB1) : ")
 
@@ -52,6 +53,8 @@ def main():
             run (dir, arg)
         elif cmd == "cwd":
             send_line(f"Répertoire courant : {dir.as_posix()}")
+        elif cmd == "setclk":
+            set_clk()
         else:
             send_Nack()
 #            time.sleep(0.001)
@@ -59,6 +62,45 @@ def main():
 #        time.sleep(0.1)
         send_eot()
         # Ajoute "load", "save", etc. ici
+
+def set_clk():
+    
+    send_ack()
+
+    now = datetime.now()
+    print(f"Setting clock to {now}")
+    # Le DS3231 utilise :
+    # 0: Secondes, 1: Minutes, 2: Heures, 3: Jour de la semaine, 
+    # 4: Date (jour), 5: Mois, 6: Année (2 chiffres)
+    
+    # Note : now.weekday() donne 0 pour Lundi, le DS3231 attend souvent 1 pour Dimanche ou Lundi
+    # Ici, on utilise 1-7 (Lundi=1)
+    dow = now.isoweekday() 
+    
+    data = [
+        dec_to_bcd(now.second),
+        dec_to_bcd(now.minute),
+        dec_to_bcd(now.hour),
+        dec_to_bcd(dow),
+        dec_to_bcd(now.day),
+        dec_to_bcd(now.month),
+        dec_to_bcd(now.year % 100) # Année sur 2 chiffres
+    ]
+
+    for i in range(0, len(data)): #, chunk_size):
+        val_int = data[i]
+        b = val_int.to_bytes(1, 'big', signed=False)
+        print (f"Sent BCD {i}: {val_int:02X}")
+        ser.write(b)
+        ser.flush()
+        time.sleep(0.002)
+
+    return data
+
+def dec_to_bcd(val):
+    """Convertit un nombre décimal en BCD."""
+    return (((val // 10) << 4) | (val % 10))
+
 
 def cat(dir, arg):
     file = Path(dir, arg)
@@ -71,6 +113,9 @@ def cat(dir, arg):
         chunk_size = 1  # Adjust depending on buffer size
         for i in range(0, len(data), chunk_size):
             ser.write(data[i:i+chunk_size])
+            ser.flush()
+            time.sleep(0.002)
+
 
 def run(dir,arg):
     if not arg.endswith(".bin"):
@@ -93,10 +138,7 @@ def run(dir,arg):
         for i in range(0, len(data)): #, chunk_size):
             ser.write(data[i:i+chunk_size])
             ser.flush()
-#            if i % 2 == 0:
-#                print(f"{i:04X} - {data[i]:02X}")
             time.sleep(0.002)
-#        time.sleep(0.01)
 
 def cd(dir, arg):
     tmpDir = Path(dir, arg)

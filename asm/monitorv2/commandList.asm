@@ -60,6 +60,8 @@ COMMAND_LIST:
     DW Cmd_poke    
     DB "run", 0x00 ; clear screen
     DW Cmd_run
+    DB "setclk", 0x00 ; set time
+    DW Cmd_setClk
     DB "help", 0x00 ; Help
     DW Cmd_Help
     DB "?", 0x00 ; Help
@@ -319,6 +321,87 @@ Cmd_run:
     LD A, 0x00
     OR 0x00
     RET
+
+Cmd_setClk:
+    LD HL, LINE_EDIT_BUFFER_ADDRESS
+.send_loop:
+    CALL SendCharB_HL
+    INC HL
+    LD A, (HL)
+    OR A
+    JP NZ, .send_loop
+
+    CALL ReceiveChar_B ; get Ack or Nack
+    ; CALL ReceiveChar_B_TO ; get Ack or Nack
+    ; JP NZ, CmdTimeout
+    CP ACK ; Check for ACK
+    LD A, '1'
+    JP NZ, .errorMsg
+    LD HL, WORKING_MEMORY_START
+    LD B, 7
+.setclk_loop:
+    CALL ReceiveChar_B ; get Time Data
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
+    LD (HL), A
+    INC HL
+    DJNZ .setclk_loop
+    CALL ReceiveChar_B ; get EOT
+    ; CALL ReceiveChar_B_TO ; get EOT
+    ; JP NZ, CmdTimeout
+    CP EOT ; Check for ACK
+    LD A, '2'
+    JP NZ, .errorMsg
+
+    LD B, 7
+    LD HL, WORKING_MEMORY_START
+    LD DE, WORKING_MEMORY_START +10
+.setclk_loop2:
+    LD A, (HL)
+    CALL Bin2Hex_DE
+    LD A, ' '
+    LD (DE), A
+    INC DE
+    INC HL
+    DJNZ .setclk_loop2
+    LD A, 0x00
+    LD (DE), A
+    LD DE, WORKING_MEMORY_START +10
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+
+    LD HL, WORKING_MEMORY_START
+    CALL RtClock_SetTime
+    JP NZ, .errorMsg
+    CALL Cmd_Clk
+    LD A, 0x00
+    OR A
+    RET
+.errorMsg:
+    LD DE, CMD_SETCLK_ERROR_MSG
+    LD HL, (CURSOR_IDX)
+    CALL PutS
+    CALL PutC
+    LD DE, CR_LF
+    CALL PutS
+    LD (CURSOR_IDX), HL
+    LD A, 0x00
+    OR 0x00
+    RET
+CMD_SETCLK_ERROR_MSG:
+    DB "Set Clock - Error : ", 0x00
+
+CmdTimeout:
+    LD HL, (CURSOR_IDX)
+    LD DE, CMD_SETCLK_TIMEOUT_MSG
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    LD A, 0x00
+    OR 0x00
+    RET
+CMD_SETCLK_TIMEOUT_MSG:
+    DB "Set Clock - Timeout Error", 0x00
 
 Cmd_Help:
     LD DE, CMD_HELP_MSG

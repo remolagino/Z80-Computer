@@ -30,6 +30,9 @@ Main:
  ;   POP HL
     JP NZ, .getTimeFail
     
+    CALL PrintTimeBytes
+
+    LD HL, TIME_TEST
     LD DE, RTCLK_WORK_MEM
     CALL RtClock_GetDateTime
     LD HL, (CURSOR_IDX)
@@ -60,56 +63,22 @@ Main:
     RET
 
 
-PrintTime:
+PrintTimeBytes:
+    LD B, 7
+    LD HL, TIME_TEST
+    LD DE, RTCLK_WORK_MEM
+.setclk_loop2:
+    LD A, (HL)
+    CALL Bin2Hex_DE
+    LD A, ' '
+    LD (DE), A
+    INC DE
+    INC HL
+    DJNZ .setclk_loop2
+    LD A, 0x00
+    LD (DE), A
+    LD DE, RTCLK_WORK_MEM
     LD HL, (CURSOR_IDX)
-    LD A, (TIME_TEST.TIME.DOW)
-    CALL RtClock_Day2Str
-    CALL PutS
-    LD A, ' '
-    CALL PutC
-    LD A, (TIME_TEST.TIME.DATE)
-    LD DE, RTCLK_WORK_MEM
-    CALL Bin2Hex_DE
-    LD DE, RTCLK_WORK_MEM
-    CALL PutS
-    LD A, '/'
-    CALL PutC
-    LD A, (TIME_TEST.TIME.MONTH)
-    LD DE, RTCLK_WORK_MEM
-    CALL Bin2Hex_DE
-    LD DE, RTCLK_WORK_MEM
-    CALL PutS
-    LD A, '/'
-    CALL PutC
-    LD A, '2'
-    CALL PutC
-    LD A, '0'
-    CALL PutC
-    LD A, (TIME_TEST.TIME.YEAR)
-    LD DE, RTCLK_WORK_MEM
-    CALL Bin2Hex_DE
-    LD DE, RTCLK_WORK_MEM
-    CALL PutS
-    LD A, ' '
-    CALL PutC
-    LD A, (TIME_TEST.TIME.HOUR)
-    LD DE, RTCLK_WORK_MEM
-    CALL Bin2Hex_DE
-    LD DE, RTCLK_WORK_MEM
-    CALL PutS
-    LD A, ':'
-    CALL PutC
-    LD A, (TIME_TEST.TIME.MINUTE)
-    LD DE, RTCLK_WORK_MEM
-    CALL Bin2Hex_DE
-    LD DE, RTCLK_WORK_MEM
-    CALL PutS
-    LD A, ':'
-    CALL PutC
-    LD A, (TIME_TEST.TIME.SECOND)
-    LD DE, RTCLK_WORK_MEM
-    CALL Bin2Hex_DE
-    LD DE, RTCLK_WORK_MEM
     CALL PutS_LN
     LD (CURSOR_IDX), HL
     RET

@@ -69,6 +69,7 @@ DEFAULT_INTERRUPT_VECTOR_MSG:
     include "../lib/MMU.asm"
     include "vdp_t2_init.asm"
     include "../lib/rtclock.asm"
+    include "../lib/eeprom.asm"
     include "../lib/stdio.asm"
     include "lineEdit.asm"
     include "parseCmdLine.asm"
@@ -144,23 +145,56 @@ Main:
     CALL PrintString
     POP HL
 
+; Previous boot time
+    CALL EEPROM_Init
+    LD DE, 0x0000
+    LD HL, WORKING_MEMORY_START
+    LD BC, 24
+    CALL EEPROM_SequentialRead
+
+    LD HL, (CURSOR_IDX)
+    LD DE, RT_PREV_BOOT_TIME_MSG
+    CALL PutS
+    LD DE, WORKING_MEMORY_START
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+
+; Initialise RTClock
     CALL RtClock_Init
     CALL NZ, .rtClockFail
 
     LD HL, WORKING_MEMORY_START
     CALL RtClock_GetDS3231Data
- ;   POP HL
+;   POP HL
     JP NZ, .rtClockFail
     
     LD DE, WORKING_MEMORY_START + 20
     CALL RtClock_GetDateTime
     LD HL, (CURSOR_IDX)
+    LD DE, RT_CURRENT_TIME_MSG
+    CALL PutS
+    LD DE, WORKING_MEMORY_START + 20
     CALL PutS_LN
     LD (CURSOR_IDX), HL
+
+    LD HL, WORKING_MEMORY_START + 20
+    LD DE, 0x0000
+    LD BC, 24
+    CALL EEPROM_BulkWrite
+    JP NZ, .eepromFail
     JP .fsInit
 .rtClockFail:
     LD HL, (CURSOR_IDX)
     LD DE, RTCLOCK_FAIL
+    CALL PutS
+    CALL PutC
+    LD DE, CR_LF
+    CALL PutS
+    LD (CURSOR_IDX), HL
+    JP .fsInit
+.eepromFail:
+    LD HL, (CURSOR_IDX)
+    LD DE, EEPROM_FAIL
     CALL PutS
     CALL PutC
     LD DE, CR_LF
@@ -171,6 +205,7 @@ Main:
     CALL SerFS_Init ; TODO Make it more modular
 
 .eventLoop:
+    LD HL, (CURSOR_IDX)
     LD A, (DRIVE_LETTER)
     CALL PutC
     LD DE, MSG_PROMPT
@@ -181,16 +216,19 @@ Main:
     CALL PutS
 
 ; command management
-    LD A, (LINE_EDIT_BUFFER_ADDRESS)
-    ; CP '²'
-    ; JP Z, .endLoop
-    CP 0x00 ; 
-    JP Z, .eventLoop ; empty line, nothing to display
+    ; LD A, (LINE_EDIT_BUFFER_ADDRESS)
+    ; CP 0x00 ; 
+    ; JP Z, .eventLoop ; empty line, nothing to display
 
     LD (CURSOR_IDX), HL ; to get back cursor index in the command
 
     LD BC, COMMAND_LIST
     LD HL, LINE_EDIT_BUFFER_ADDRESS
+    CALL SpaceRemoval
+    LD A, (HL)
+    CP 0x00 ; 
+    JP Z, .eventLoop ; empty line, nothing to display
+
     CALL ParseAndExecCommand
     LD HL, (CURSOR_IDX)
 
@@ -203,10 +241,7 @@ Main:
     CALL PutS_LN
     JP .eventLoop
 
-; .endLoop:
-;     LD HL, CR_LF
-;     CALL PrintString
-;     RET 
+
 .crissCross:
     PUSH BC
     PUSH DE
@@ -282,8 +317,14 @@ PARSE_ERROR_MSG:
     DB "Unknown Command : ", 0x00
 CHAR_DISP_ERROR:
     DB "Char Display : invalid number", 0x00
+RT_PREV_BOOT_TIME_MSG:
+    DB "Previous Boot  : ", 0x00
+RT_CURRENT_TIME_MSG:
+    DB "Current Time   : ", 0x00
 RTCLOCK_FAIL:
     DB "RTClock Error : ", 0x00
+EEPROM_FAIL:
+    DB "EEPROM Error : ", 0x00
 VDP_T2_INIT_MSG:
     DB "VDP T2 Initialized", CR_KEY_CODE, LF_KEY_CODE, 0x00
 VDP_T2_CLEAR_SCREEN_MSG:

@@ -78,14 +78,20 @@ SerFS_Cmd_run:
     OR A
     JP NZ, .send_loop
 
-    CALL ReceiveChar_B ; get Ack or Nack
+    CALL ReceiveChar_B ; get NACK or ACK
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
     CP ACK ; Check for ACK
     JP NZ, .errorMsg
     LD DE, WORKING_MEMORY_START
-    CALL ReceiveChar_B ; get the two bytes for the size
+    CALL ReceiveChar_B ; get MSB for size
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
     LD B, A
     CALL Bin2Hex_DE
-    CALL ReceiveChar_B
+    CALL ReceiveChar_B ; get LSB for size
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
     LD C, A
     CALL Bin2Hex_DE
     LD A, 0x00
@@ -99,7 +105,9 @@ SerFS_Cmd_run:
     
     LD HL, PROGRAM_BASE_ADDRESS
 .receive_loop:
-    CALL ReceiveChar_B
+    CALL ReceiveChar_B ; get next byte
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
     LD (HL), A
     DEC BC
     INC HL
@@ -120,8 +128,10 @@ SerFS_Cmd_run:
     POP HL
     JP .receive_loop
 .end_loop:
-    CALL ReceiveChar_B ; fetch the EOT byte
-;    CALL he
+    CALL ReceiveChar_B ; get next byte
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
+
     LD HL, (CURSOR_IDX)
     LD DE, CMD_RUN_DOWNLOADED
     CALL PutS_LN
@@ -131,7 +141,9 @@ SerFS_Cmd_run:
 .errorMsg:
     LD DE, WORKING_MEMORY_START
 .errorMsgLoop:
-    CALL ReceiveChar_B
+    CALL ReceiveChar_B ; get EOT
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
     CP EOT
     JR Z, .exit
     LD (DE), A
@@ -145,6 +157,7 @@ SerFS_Cmd_run:
     CALL PutS
     LD (CURSOR_IDX), HL
     RET
+
 CMD_RUN_RECEIVING_MSG:
     DB "Receiving file - Size : 0x", 0x00
 CMD_RUN_DOWNLOADED:
@@ -160,7 +173,9 @@ SerFS_TxtCmd: ; send command in HL to serial B and display response
 
     LD HL, WORKING_MEMORY_START 
 .receive_Data_loop:
-    CALL ReceiveChar_B
+    CALL ReceiveChar_B ; get next byte
+    ; CALL ReceiveChar_B_TO ; get next byte
+    ; JP NZ, SerFS_TimeOut
     LD (HL), A
     CP EOT
     JP Z, .endOfTransmission
@@ -178,6 +193,13 @@ SerFS_TxtCmd: ; send command in HL to serial B and display response
 ;SCROLL_LINE_NUMBER EQU 20
 ;LINE_LENGTH EQU 80
 
+SerFS_TimeOut:
+    LD HL, (CURSOR_IDX)
+    LD DE, SERFS_TIMEOUT_MSG
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    RET
+
 Wrong_File_System:
     LD DE, SERFS_WRONGFS_MSG
     LD HL, (CURSOR_IDX)
@@ -187,6 +209,7 @@ Wrong_File_System:
 
 SERFS_WRONGFS_MSG:
     DB "Wrong File System", 0x00
-
+SERFS_TIMEOUT_MSG:
+    DB "Serial File System Timeout", 0x00
 
     ENDIF

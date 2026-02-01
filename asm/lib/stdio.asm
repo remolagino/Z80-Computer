@@ -577,9 +577,9 @@ SIO_GETC: ; get a character from serial, 0x00 is empty
 ; TILDE EQU 0x03
 PURGE_DEAD_KEY EQU 0x10
 
-KBD_GETC:    ; Return key in A
+KBD_GETC:    ; Return key in A - non blocking - 0x00 if no key
     CALL Keyboard_GetKey
-    ; Add Dead Key management
+
     CP 0x00
     RET Z
     PUSH BC
