@@ -2,17 +2,22 @@
 ; ----- Connected to PIO (IORQ 0x00) PORT B -------
 ; -----  SDA on bit 0, SCL on bit 1     -----------
 ; -------------------------------------------------
+; -------------------------------------------------
     IFNDEF __I2C__
     DEFINE __I2C__ 1
 
+
+    INCLUDE "../monitorv2/memoryMapv2.inc"
+    INCLUDE "../lib/pio.inc"
+
   
-; ==== PIO INIT ====
-PIO_ADDR EQU 0x00 ; adresse de base du PIO
-PIO_DATA_A EQU PIO_ADDR ; A0 = 0 -> Channel A / A1 = 0 -> Data
-PIO_DATA_B EQU PIO_ADDR + 1 ; A0 = 1 -> Channel B / A1 = 0 -> Data
-PIO_CTRL_A EQU PIO_ADDR + 2 ; A0 = 0 -> Channel A / A1 = 1 -> Cmd
-PIO_CTRL_B EQU PIO_ADDR + 3 ; A0 = 1 -> Channel B / A1 = 1 -> Cmd
-PIO_MODE3_CONTROL EQU 0b11001111 ; Set mode 3 control
+; ; ==== PIO INIT ====
+; PIO_ADDR EQU 0x00 ; adresse de base du PIO
+; PIO_DATA_A EQU PIO_ADDR ; A0 = 0 -> Channel A / A1 = 0 -> Data
+; PIO_DATA_B EQU PIO_ADDR + 1 ; A0 = 1 -> Channel B / A1 = 0 -> Data
+; PIO_CTRL_A EQU PIO_ADDR + 2 ; A0 = 0 -> Channel A / A1 = 1 -> Cmd
+; PIO_CTRL_B EQU PIO_ADDR + 3 ; A0 = 1 -> Channel B / A1 = 1 -> Cmd
+; PIO_MODE3_CONTROL EQU 0b11001111 ; Set mode 3 control
 
 
 I2C_SDA_LINE_BIT EQU 0
@@ -21,10 +26,6 @@ I2C_SCL_LINE_BIT EQU 1
 I2C_READ EQU 1
 I2C_WRITE EQU 0
 
-    INCLUDE "../monitorv2/memoryMapv2.inc"
-
-; I2C_PIO_STATUS:
-;     DB 0xFF
 
 I2C_Delay: ; delay look - use B
     PUSH BC
@@ -38,24 +39,24 @@ I2C_Delay: ; delay look - use B
 I2C_Apply:
     LD A, PIO_MODE3_CONTROL  ; Force Mode 3 (Bit Control)
     OUT (PIO_CTRL_B), A
-    LD A, (I2C_PIO_STATUS)
+    LD A, (PIO_PORT_B_STATUS)
     OUT (PIO_CTRL_B), A ; Applique les directions (1=In, 0=Out)
     RET
 
 SDA_HIGH: ; SDA line set as Input
     PUSH AF
-    LD A, (I2C_PIO_STATUS)
+    LD A, (PIO_PORT_B_STATUS)
     SET I2C_SDA_LINE_BIT, A
-    LD (I2C_PIO_STATUS), A
+    LD (PIO_PORT_B_STATUS), A
     CALL I2C_Apply
     POP AF
     RET
 
 SDA_LOW:
     PUSH AF
-    LD A, (I2C_PIO_STATUS)
+    LD A, (PIO_PORT_B_STATUS)
     RES I2C_SDA_LINE_BIT, A
-    LD (I2C_PIO_STATUS), A
+    LD (PIO_PORT_B_STATUS), A
     CALL I2C_Apply
     XOR A
     OUT (PIO_DATA_B), A
@@ -64,18 +65,18 @@ SDA_LOW:
 
 SCL_HIGH:
     PUSH AF
-    LD A, (I2C_PIO_STATUS)
+    LD A, (PIO_PORT_B_STATUS)
     SET I2C_SCL_LINE_BIT, A
-    LD (I2C_PIO_STATUS), A
+    LD (PIO_PORT_B_STATUS), A
     CALL I2C_Apply
     POP AF
     RET
 
 SCL_LOW:
     PUSH AF
-    LD A, (I2C_PIO_STATUS)
+    LD A, (PIO_PORT_B_STATUS)
     RES I2C_SCL_LINE_BIT, A
-    LD (I2C_PIO_STATUS), A
+    LD (PIO_PORT_B_STATUS), A
     CALL I2C_Apply
     XOR A
     OUT (PIO_DATA_B), A
@@ -86,8 +87,9 @@ I2C_Init: ; Init PIO for I2C
     PUSH AF
     LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
     OUT (PIO_CTRL_B), A
-    LD A, 0xFF; all PIO line to input; therefore scl and sda are high
-    LD (I2C_PIO_STATUS), A ; save the status
+    LD A, (PIO_PORT_B_STATUS) ; get the status
+    OR 0x03; SCL and SDA to input; therefore scl and sda are high
+    LD (PIO_PORT_B_STATUS), A ; save the status
     OUT (PIO_CTRL_B), A
     LD A, 0x03 ; No interrupt, no mask
     OUT (PIO_CTRL_B), A

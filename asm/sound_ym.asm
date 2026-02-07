@@ -2,56 +2,62 @@
 ; Sound card connected to port 0x50 (address) and 0x51 (data)
 ; This program plays a simple sine wave tone
 
-        ORG     0x5000          ; Start address
 
 YM_ADDR EQU     0x50            ; YM3812 address/status port
 YM_DATA EQU     0x51            ; YM3812 data port
 
-KEYPAD_ADDR EQU 0x60
-KEYPAD_BASECOL EQU KEYPAD_ADDR
-KEYPAD_COLNUM EQU 0x04
 
+    ORG     0x4000          ; Start address
+    JP START
+
+    include "./lib/stdio.asm"
+    include "./monitorv2/memoryMapv2.inc"
 
 START:
-        CALL    YM_RESET        ; Properly reset the YM3812
+    LD HL, (CURSOR_IDX)
+    LD DE, START_MSG
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+
+    CALL YM_RESET        ; Properly reset the YM3812
         
-        CALL YM_SETSOUND
+    CALL YM_SETSOUND
+
+    LD HL, (CURSOR_IDX)
+    LD DE, START_MSG
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    
 
 .mainLoop:
-    CALL keypadSCan
-    LD A, (KEYPAD_BUFFER+3)
-    AND 0x08 ; mask for the Enter key
-    JP NZ, prog_end
+    CALL GetC
+    CP 0x00
+    JP Z, .mainLoop
+    CP '²'
+    JP Z, prog_end
     
-    LD A, (KEYPAD_BUFFER)
-    AND 0x01 ; mask for the first row
-    JP Z, .noPress
-    LD A,(KEYPAD_STATE)
-    CP 0x01
-    JP Z,.mainLoop
-    LD A, 0x01
-    LD (KEYPAD_STATE), A
-        ; Turn on the note
-        LD A, 0xB0
-        LD C, 0x32
-        CALL YM_WRITE
+    CP 'a'
+    JP Z, .stopNote
+    ; Turn on the note
+    LD A, 0xB0
+    LD C, 0x32
+    CALL YM_WRITE
 
     JP .mainLoop
-.noPress:
-    LD A, (KEYPAD_STATE)
-    CP 0x01
-    JP NZ, .endNoPress
-        ; Turn off the note
-        LD      A, 0xB0
-        LD      C, 0x12         ; Key Off (bit 5 = 0)
-        CALL    YM_WRITE
-.endNoPress:
-    LD A, 0x00
-    LD (KEYPAD_STATE), A
+.stopNote:
+    ; Turn off the note
+    LD      A, 0xB0
+    LD      C, 0x12         ; Key Off (bit 5 = 0)
+    CALL    YM_WRITE
+
     JP .mainLoop
 
 prog_end:
     CALL    YM_RESET        ; Properly reset the YM3812
+    LD HL, (CURSOR_IDX)
+    LD DE, END_MSG
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
     RET
         
 
@@ -173,32 +179,7 @@ YM_SETSOUND:
 
         RET
 
-keypadSCan:
-    PUSH BC
-    PUSH HL
-    LD C, KEYPAD_BASECOL
-    LD B, KEYPAD_COLNUM
 
-    LD HL, KEYPAD_BUFFER
-.rowLoop:
-    IN A, (C)
-    LD (HL), A
-    INC C
-    INC HL
-    DJNZ .rowLoop
-
-    POP HL
-    POP BC
-    RET
-
-
-
-KEYPAD_BUFFER
-    DB 0x00, 0x00, 0x00, 0x00, 0x00
-
-KEYPAD_STATE 
-    DB 0x00, 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00, 0x00
-    DB 0x00, 0x00, 0x00, 0x00, 0x00
+START_MSG DB "YM3812 Test Program", 0
+END_MSG DB "Program ended", 0
         END

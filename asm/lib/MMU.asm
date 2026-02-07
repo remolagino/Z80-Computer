@@ -21,37 +21,37 @@ MMU_PAGE1_GET EQU 0x40
 MMU_PAGE2_GET EQU 0x80
 MMU_PAGE3_GET EQU 0xC0
 
-ROM_SELECT EQU 0x00
-RAM_SELECT EQU 0x80
-ROM_RAM_SELECT_MASK EQU 0x7F
+MMU_ROM_SELECT EQU 0x00
+MMU_RAM_SELECT EQU 0x80
+MMU_ROM_RAM_SELECT_MASK EQU 0x7F
 
 MMU_ACTIVATE EQU MMU_BASE_ADDR + 0x04
 
 
 MMU_SetPage0: ; Bank# in A, ROM/RAM Select in B (R*M_SELECT)
     PUSH AF
-    AND ROM_RAM_SELECT_MASK
+    AND MMU_ROM_RAM_SELECT_MASK
     OR B
     OUT (MMU_PAGE0_SET), A
     POP AF
     RET
 MMU_SetPage1: ; Bank# in A, ROM/RAM Select in B (R*M_SELECT)
     PUSH AF
-    AND ROM_RAM_SELECT_MASK
+    AND MMU_ROM_RAM_SELECT_MASK
     OR B
     OUT (MMU_PAGE1_SET), A
     POP AF
     RET
 MMU_SetPage2: ; Bank# in A, ROM/RAM Select in B (R*M_SELECT)
     PUSH AF
-    AND ROM_RAM_SELECT_MASK
+    AND MMU_ROM_RAM_SELECT_MASK
     OR B
     OUT (MMU_PAGE2_SET), A
     POP AF
     RET
 MMU_SetPage3: ; Bank# in A, ROM/RAM Select in B (R*M_SELECT)
     PUSH AF
-    AND ROM_RAM_SELECT_MASK
+    AND MMU_ROM_RAM_SELECT_MASK
     OR B
     OUT (MMU_PAGE3_SET), A
     POP AF
@@ -59,6 +59,12 @@ MMU_SetPage3: ; Bank# in A, ROM/RAM Select in B (R*M_SELECT)
 
 MMU_GetPageInfo : ; Page# in B (MMU_PAGE#_GET); result in A (rom ram select in bit 7)
     PUSH BC
+    SLA B ; Shift page number to get the correct bits for the MMU read port
+    SLA B
+    SLA B
+    SLA B
+    SLA B
+    SLA B
     LD C, MMU_READ
     IN A, (C)
     POP BC
