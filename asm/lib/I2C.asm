@@ -18,7 +18,7 @@
 ; PIO_CTRL_A EQU PIO_ADDR + 2 ; A0 = 0 -> Channel A / A1 = 1 -> Cmd
 ; PIO_CTRL_B EQU PIO_ADDR + 3 ; A0 = 1 -> Channel B / A1 = 1 -> Cmd
 ; PIO_MODE3_CONTROL EQU 0b11001111 ; Set mode 3 control
-
+PIO_PORT_CFG EQU 0x87 ; MISO in, MOSI out, SCLK out, CS out, RTClk I2C in
 
 I2C_SDA_LINE_BIT EQU 0
 I2C_SCL_LINE_BIT EQU 1
@@ -87,8 +87,8 @@ I2C_Init: ; Init PIO for I2C
     PUSH AF
     LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
     OUT (PIO_CTRL_B), A
-    LD A, (PIO_PORT_B_STATUS) ; get the status
-    OR 0x03; SCL and SDA to input; therefore scl and sda are high
+    LD A, PIO_PORT_CFG ; get the status
+;    OR 0x03; SCL and SDA to input; therefore scl and sda are high
     LD (PIO_PORT_B_STATUS), A ; save the status
     OUT (PIO_CTRL_B), A
     LD A, 0x03 ; No interrupt, no mask

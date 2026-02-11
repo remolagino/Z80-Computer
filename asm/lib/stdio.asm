@@ -14,10 +14,7 @@ CR_KEY_CODE EQU 0x0D
 
 VDP_SCROLL_LINE_IDX EQU 25 ; line index to start scrolling
 
-
-
-;VRAM_DATA EQU   0x40            ; PORT #0 - VRAM data port
-;    include "jumpTable.inc"
+    include "../monitorv2/memoryMapv2.inc"
     include "serial.asm"
     include "vdp_core.asm"
     include "keyboard.asm"
@@ -775,12 +772,6 @@ ACCENTED_O:
     DB 'ô', 'ö', 'õ'
 ACCENTED_U:
     DB 'û', 'ü', '~u'
-
-
-; STDIO_STREAM_SELECT: ; bit 0 is serial, bit 1 is video, bit 2 is printer
-;     DB 0x00
-; STDIO_DEAD_KEY:
-;     DB 0x00
 
 
 
