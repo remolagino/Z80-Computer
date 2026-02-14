@@ -13,50 +13,104 @@
 
 
 ; =============================================================================
-; DISK_READ
-;  * Params : A = Drive letter (B or C), BCDE = LBA, HL = Buffer
-;  * Result : A = Error Code, Carry set if error
+; DISK_INIT
+;  * Params : A = Drive letter (B or C)
+;  * Result : Success : A= Drive Letter, carry flag reset
+;           * Error : A = Error Code, Carry set
 ; =============================================================================
-DISK_READ:
+DISK_INIT:
+    PUSH BC
     PUSH AF
     CALL DISK_Select_Hardware
+    JP C, .error
+    CALL SDCARD_INIT
+    JP C, .error
     POP AF
-
-    CP 'B'
-    JR Z, .continue
-    CP 'C'
-    JR Z, .continue
-    ; neither B nor C : error
-    SCF
+    OR A
+    POP BC
     RET
-.continue:
-    ; Pour 1 (B:) et 2 (C:), on utilise le driver SD
-    ; car DISK_Select_Hardware a déjà géré le Chip Select
+.error:
+    LD B, A
+    POP AF
+    LD A, B
+    SCF
+    POP BC
+    RET
+
+; =============================================================================
+; DISK_READ
+;  * Params : A = Drive letter (B or C), BCDE = LBA, HL = Buffer
+;  * Result : Success : A= Drive Letter, carry flag reset
+;  * Error : A = Error Code, Carry set
+; =============================================================================
+DISK_READ:
+    PUSH BC
+    PUSH AF
+    CALL DISK_Select_Hardware
+    JP C, .error
     CALL SDCARD_READ_BLOCK
+    JP C, .error
+    POP AF
+    OR A
+    POP BC
+    RET
+.error:
+    LD B, A
+    POP AF
+    LD A, B
+    SCF
+    POP BC
     RET
 
 
 ; =============================================================================
 ; DISK_WRITE
 ;  * Params : A = Drive letter (B or C), BCDE = LBA, HL = Buffer
-;  * Result : A = Error Code, Carry set if error
+;  * Result : Success : A= Drive Letter, carry flag reset
+;  * Error : A = Error Code, Carry set
 ; =============================================================================
 DISK_WRITE:
+    PUSH BC
     PUSH AF
     CALL DISK_Select_Hardware
-    POP AF
-
-    CP 'B'
-    JR Z, .continue
-    CP 'C'
-    JR Z, .continue
-    ; neither B nor C : error
-    SCF
-    RET
-.continue:
-    ; Pour 1 (B:) et 2 (C:), on utilise le driver SD
-    ; car DISK_Select_Hardware a déjà géré le Chip Select
+    JP C, .error
     CALL SDCARD_WRITE_BLOCK
+    JP C, .error
+    POP AF
+    OR A
+    POP BC
+    RET
+.error:
+    LD B, A
+    POP AF
+    LD A, B
+    SCF
+    POP BC
+    RET
+
+; =============================================================================
+; DISK_STATUS
+;  * Params : A = Drive letter (B or C)
+;  * Result : Success : A= Drive Letter, carry flag reset
+;  * Error : A = Error Code, Carry set
+; =============================================================================
+DISK_STATUS:
+    PUSH BC
+    PUSH AF
+    CALL DISK_Select_Hardware
+    JP C, .error
+    CALL SDCARD_GET_STATUS
+    JP C, .error
+    POP AF
+    OR A
+    POP BC
+    RET
+.error:
+    LD B, A
+    POP AF
+    LD A, B
+    SCF
+    POP BC
     RET
 
 
@@ -69,15 +123,16 @@ DISK_Select_Hardware:
     JR Z, .select_sd1    ; Drive C:
     CP 'B'
     JR Z, .select_sd2    ; Drive B:
+    SCF
+    LD A, 0x71
     RET                  ; Drive A: (pas de CS SPI)
-
 .select_sd1:
-    ; Ici : Code pour mettre CS1 à 0 et CS2 à 1 sur ton PIO
-    ; Ex: LD A, MASK_CS1_ACTIVE \ OUT (PIO_DATA), A
+    LD A, SPI_CS1_BIT
+    OR A
     RET
-
 .select_sd2:
-    ; Ici : Code pour mettre CS1 à 1 et CS2 à 0 sur ton PIO
+    LD A, SPI_CS2_BIT
+    OR A
     RET
 
 

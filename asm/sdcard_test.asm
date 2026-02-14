@@ -1,139 +1,76 @@
 ; --------------------------------------------
-; -------- test program for SDARD -------------
+; -------- test program for SDCARD -------------
 ; --------------------------------------------
     .ORG 0x4000
 
     JP Main
 
-    INCLUDE "./lib/diskio.asm"
+ ;   INCLUDE "./lib/diskio.asm"
+    INCLUDE "./monitorv2/memoryMapv2.inc"
+    INCLUDE "./monitorv2/lineEdit.asm"
+    INCLUDE "FAT16.asm"
     INCLUDE "./lib/stdio.asm"
     INCLUDE "./lib/string.asm"
 
+SDCARD_BUFFER  EQU 0x7000
+SDCARD_BUFFER2 EQU SDCARD_BUFFER + 0x0200
+
 
 Main:
-    CALL SDCARD_INIT
-    JP C, .error
-
-; CMD17 + Read block
-
-    LD DE, SDCARD_GetBlock_MSG
+    LD DE, SDCARD_Init_MSG
     CALL SDCARD_MsgPrint
-    LD HL, 0x8400 ; write the data far in RAM
-    LD BC, 0x00
-    LD DE, 0x00
     LD A, 'C'
+    CALL FAT_MOUNT
+    JP C, .error
+    CALL SDCARD_CodePrint
+
+    LD A, 'C'
+    LD HL, SDCARD_BUFFER
+    LD BC, (FAT_LBA_FAT1 + 2)
+    LD DE, (FAT_LBA_FAT1)
     CALL DISK_READ
-    JP C, .error
-    CALL SDCARD_CodePrint
+.loop:
+    CALL LineEdit_Init
+    LD HL, (CURSOR_IDX)
+    CALL LineEdit
+    LD DE, LF_CR
+    CALL PutS
+    ; LD DE, LINE_EDIT_BUFFER_ADDRESS
+    ; CALL PutS_LN
+    LD (CURSOR_IDX), HL
 
-    LD A, 0xAA
-    LD HL, 0x8410
-    LD (HL), A
+    LD HL, LINE_EDIT_BUFFER_ADDRESS
+    LD A, (HL)
+    CP '²'
+    JP Z, .exit
 
-    LD DE, SDCARD_WriteBlock_MSG
-    CALL SDCARD_MsgPrint
+    CALL HexWord2Bin
+    JP NZ, .error
+    LD B, D
+    LD C, E
 
-    LD HL, 0x8400 ; write the data far in RAM
-    LD BC, 0x00
-    LD DE, 0x00
+    ; LD DE, SDCARD_LS_MSG
+    ; CALL SDCARD_MsgPrint
     LD A, 'C'
-    CALL DISK_WRITE
+ ;   LD BC, 0x0000
+    LD DE, SDCARD_BUFFER2
+    CALL FAT_LS
     JP C, .error
     CALL SDCARD_CodePrint
 
-    LD DE, SDCARD_STATUS_MSG
-    CALL SDCARD_MsgPrint
-    CALL SDCARD_GET_STATUS
-    JP C, .error
-    CALL SDCARD_CodePrint
-
-    LD DE, SDCARD_GetBlock_MSG
-    CALL SDCARD_MsgPrint
-    LD HL, 0x8600 ; write the data far in RAM
-    LD BC, 0x00
-    LD DE, 0x00
-    LD A, 'C'
-    CALL DISK_READ
-    JP C, .error
-    CALL SDCARD_CodePrint
-
-
-    CALL SPI_endCom
-
+    LD HL, (CURSOR_IDX)
+    LD DE, SDCARD_BUFFER2
+    CALL PutS_LN
+    LD (CURSOR_IDX), HL
+    
+    JP .loop
+.exit
     RET
 .error:
     CALL SDCARD_ErrorMsgPrint
-    CALL SPI_endCom
     LD A, 0x00
-    RET
+    JP .loop
 
-SDCARD_PrintResponse: ; Print the response from the SD card
-    PUSH BC
-    PUSH DE
-    PUSH HL
-    LD DE, SDCARD_BUFFER
-    LD HL, SDCARD_RESPONSE ; Response buffer address
-    LD B, 4
-.loop:
-    LD A, (HL) ; Read first byte of response
-    CALL Bin2Hex_DE
-    LD A, '-' ; Send '-' character to SIO port A
-    LD (DE), A
-    INC DE
-    INC HL ; Move to next byte in response buffer
-    DJNZ .loop
-    LD A, 0x00 ; Null terminator for string
-    LD (DE), A
-    LD HL, (CURSOR_IDX)
-    LD DE, SDCARD_BUFFER
-    CALL PutS_LN
-    LD (CURSOR_IDX), HL
-    POP HL
-    POP DE
-    POP BC
-    RET
-
-; SDCARD_PRINT_BLOCK: ; Read a block of data from the SD card
-;     PUSH BC
-;     PUSH DE
-;     PUSH HL
-;     LD D, 0x00 ; Number of 16 bytes to read (512 bytes)
-;     LD HL, SDCARD_BUFFER
-; .blockLoop:
-;     LD C, 0x10 ; Number of bytes to read
-; .rowLoop:
-;     CALL SPI_READ_BYTE ; Read a byte from the SD card
-;     LD (HL), A
-;     INC HL
-;     DEC C
-;     JP NZ, .rowLoop ; Loop until all bytes are sent
-;     INC D ; Increment block counter
-;     LD A, D
-;     CP 0x20 ; Check if D is 32
-;     JP NZ, .blockLoop ; If not zero, read next block
-; .readCRC:
-;     CALL SPI_READ_BYTE ; Read CRC byte from the SD card
-;     CALL SPI_READ_BYTE ; Read CRC byte from the SD card
-
-;     LD HL, SDCARD_BUFFER ; Load the buffer address
-;     LD DE, SDCARD_PRINTABLE_BUFFER_ADDRESS ; Load the printable buffer address
-;     CALL MemoryDump
-;     LD HL, (CURSOR_IDX)
-;     CALL PutS_LN
-
-; ; TODO PAUSE to stop scrolling
-
-;     LD (CURSOR_IDX), HL
-;     LD HL, SDCARD_BUFFER+ 0x100 ; Load the buffer address
-;     LD DE, SDCARD_PRINTABLE_BUFFER_ADDRESS ; Load the printable buffer address
-;     CALL MemoryDump ; Print the buffer as hex
-;     LD HL, (CURSOR_IDX)
-;     CALL PutS_LN
-;     LD (CURSOR_IDX), HL
-;     POP HL
-;     POP DE
-;     POP BC
-;     RET
 
 SDCARD_MsgPrint: ; print message in DE
     PUSH HL
@@ -147,11 +84,11 @@ SDCARD_CodePrint: ; print code in A as hex
     PUSH AF
     PUSH DE
     PUSH HL
-    LD DE, SDCARD_BUFFER
+    LD DE, SDCARD_WORKSPACE
     CALL Bin2Hex_DE ; Convert response to string for display
     LD A, 0x00
     LD (DE), A
-    LD DE, SDCARD_BUFFER
+    LD DE, SDCARD_WORKSPACE
     LD HL, (CURSOR_IDX)
     CALL PutS_LN ; Print 
     LD (CURSOR_IDX), HL
@@ -168,11 +105,11 @@ SDCARD_ErrorMsgPrint: ; print and error message for error code in A
     LD DE, SDCARD_ERRROR_MSG
     LD HL, (CURSOR_IDX)
     CALL PutS
-    LD DE, SDCARD_BUFFER
+    LD DE, SDCARD_WORKSPACE
     CALL Bin2Hex_DE ; Convert response to string for display
     LD A, 0x00
     LD (DE), A
-    LD DE, SDCARD_BUFFER
+    LD DE, SDCARD_WORKSPACE
     CALL PutS_LN
     LD (CURSOR_IDX), HL
 
@@ -184,26 +121,45 @@ SDCARD_ErrorMsgPrint: ; print and error message for error code in A
 ; Text Constants
 LF_CR:
     DB 0x0D, 0x0A, 0x00
+SDCARD_Init_MSG:
+    DB "Starting Initialisation : ", 0x00
 SDCARD_INIT_SUCCESS_MSG:
     DB "SD Card initialized successfully.", 0x00
 SDCARD_ERRROR_MSG:
-    DB "Error: Invalid response from SD card : ", 0x00
+    DB "Error: ", 0x00
 SDCARD_STATUS_MSG:
     DB "Get Status Result : ", 0x00
 SDCARD_GetBlock_MSG :
-    DB "Block Received :", 0x00
+    DB "Block Received : ", 0x00
 SDCARD_WriteBlock_MSG:
     DB "Write back the block : ", 0x00
+SDCARD_LS_MSG:
+    DB "LS test : ", 0x00
+SDCARD_Time_MSG:
+    DB "Time test : ", 0x00
 
-; Variables
-SDCARD_R1:
-    DB 0x00 ; R1 response for SD card commands
-SDCARD_RESPONSE:
-    DB 0x00, 0x00, 0x00, 0x00 ; Response buffer for SD card commands
-SDCARD_SECTOR_ADDRESS:
-    DB 0x00, 0x00, 0x00, 0x00 ; Sector address for SD card commands
+SDCARD_LOREM:
+    DB "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+    DB "Integer placerat felis est, quis tempus ligula mollis nec. "
+    DB "Aliquam ac nunc eget velit dictum tincidunt sed sit amet "
+    DB "massa. Sed rutrum nec augue at auctor. Donec at hendrerit"
+    DB " nunc, pretium rhoncus turpis. Praesent quis ante porta, "
+    DB "aliquam quam ut, varius neque. Etiam eget finibus purus, vitae"
+    DB " convallis magna. Integer rutrum vel risus ut tincidunt. "
+    DB "Integer a hendrerit turpis. Nam accumsan urna in nulla "
+    DB "ullamcorper ultricies. Cras convallis mauris proin."
+    DB " Curabitur placerat commodo libero, in elementum velit "
+    DB "tempus vitae. In pharetra sit amet eros non blandit. Sed "
+    DB "at mi ut elit consequat tristique. Ut imperdiet quam at enim "
+    DB "malesuada fringilla. Cras luctus ante nec urna rutrum elementum. "
+    DB "Aliquam dapibus, dui non egestas suscipit, sem neque dictum arcu, "
+    DB "eget condimentum libero dui volutpat tortor. Aliquam elementum "
+    DB "posuere sollicitudin. Ut in pellentesque nulla. Aenean vitae velit "
+    DB "nisl. Vivamus viverra, justo id aliquet accumsan, est risus "
+    DB "vehicula est, tempus aliquet arcu lorem at nisi. Duis tellus."
 
-SDCARD_BUFFER:
-   BLOCK 0x200 , 0x00 ; 512 bytes buffer for SD card data
+SDCARD_WORKSPACE:
+    BLOCK 0x10, 0x00
+
 
 

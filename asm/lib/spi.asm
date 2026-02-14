@@ -18,6 +18,7 @@ SPI_CS1_BIT EQU 4 ; CS bit position
 SPI_CS2_BIT EQU 3 ; CS bit position
 
 SPI_Init: ; Init PIO for SPI on Port B - use A
+    PUSH AF
     PUSH BC
     LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
     OUT (PIO_CTRL_B), A
@@ -26,7 +27,8 @@ SPI_Init: ; Init PIO for SPI on Port B - use A
     LD A, 0x03 ; No interrupt, no mask
     OUT (PIO_CTRL_B), A
     LD A, 0xFF ; Set all bits high (MISO input will read high, MOSI SCLK CS will be high)
-    SET SPI_CS1_BIT, A; Set CS high
+    SET SPI_CS1_BIT, A ; Set CS1 high
+    SET SPI_CS2_BIT, A ; Set CS2 high
     RES SPI_SCLK_BIT, A; Set SCLK low
     SET SPI_MOSI_BIT, A; Set MOSI high
     OUT (PIO_DATA_B), A 
@@ -38,28 +40,53 @@ SPI_Init: ; Init PIO for SPI on Port B - use A
     OUT (PIO_DATA_B), A ; Set SCLK low
     DJNZ .initloop ; Loop until all bits are sent
 
-    RES SPI_CS1_BIT, A; Set CS low
+;    RES SPI_CS1_BIT, A; Set CS low
     RES SPI_MOSI_BIT, A; Set MOSI low
     RES SPI_SCLK_BIT, A; Set SCLK low
     OUT (PIO_DATA_B), A ; Set CS low
     POP BC
+    POP AF
     RET
+
+SPI_CS1_SELECT:
+    PUSH AF
+    IN A, (PIO_DATA_B)
+    RES SPI_CS1_BIT, A
+    SET SPI_CS2_BIT, A
+    OUT (PIO_DATA_B), A
+    POP AF
+    RET
+
+SPI_CS2_SELECT:
+    PUSH AF
+    IN A, (PIO_DATA_B)
+    RES SPI_CS2_BIT, A
+    SET SPI_CS1_BIT, A
+    OUT (PIO_DATA_B), A
+    POP AF
+    RET
+
 
 SPI_endCom:
     PUSH AF
-    LD A, 0xFF ; Set all bits high (MISO input will read high, MOSI SCLK CS will be high)
+;    LD A, 0xFF ; Set all bits high (MISO input will read high, MOSI SCLK CS will be high)
+    IN A, (PIO_DATA_B)
     SET SPI_CS1_BIT, A; Set CS high
+    SET SPI_CS2_BIT, A; Set CS high    
     RES SPI_SCLK_BIT, A; Set SCLK low
     SET SPI_MOSI_BIT, A; Set MOSI high
     OUT (PIO_DATA_B), A 
+    LD A, 0xFF
+    CALL SPI_SEND_BYTE_A
     POP AF
     RET
 
 SPI_SEND_BYTE_A: ; Send a byte to the SD card (byte in A)
     PUSH BC
     LD C, A
-    LD A, 0xFF
-    RES SPI_CS1_BIT, A
+;    LD A, 0xFF
+    IN A, (PIO_DATA_B) ; restore CS1 or CS2 byte
+;    RES SPI_CS1_BIT, A
     RES SPI_SCLK_BIT, A
     SET SPI_MISO_BIT, A ; Set MISO line high - do nothing as input
     OUT (PIO_DATA_B), A ; Set SCLK low
@@ -98,8 +125,9 @@ SPI_READ_BYTE: ; read a byte in SPI - result in A
     PUSH BC
     PUSH DE
     LD E, 0xFF ; Response message
-    LD A, 0xFF 
-    RES SPI_CS1_BIT, A ; Set CS line low
+    IN A, (PIO_DATA_B) ; restore CS1 or CS2 bit
+;    LD A, 0xFF 
+;    RES SPI_CS1_BIT, A ; Set CS line low
     SET SPI_MOSI_BIT, A ; Set MOSI line high
     RES SPI_SCLK_BIT, A
     OUT (PIO_DATA_B), A ; Set SCLK low

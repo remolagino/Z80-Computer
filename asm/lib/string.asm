@@ -321,11 +321,10 @@ HexByte2Bin: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag
     POP BC
     RET
 
-Bin2BCD: ; Convert a hex number in E to BCD in HL
+Bin2BCD: ; Convert a hex number in A to BCD in HL
     PUSH BC
     PUSH DE
     LD HL, 0x0000
-    LD A, E
     LD B, 0x00 ; Initialize B to 0
 .hundredLoop:
     INC B

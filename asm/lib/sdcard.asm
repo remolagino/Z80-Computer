@@ -105,13 +105,26 @@ SDCARD_WaitDataToken: ; Wait for a token from the SD card,token in (HL), Z flag 
 
 
 ; Read a block of data from the SD card :
+;    * CS (SPI_CS1_BIT or SPI_CS2_BIT) in A
 ;    * LBA address in BCDE 
 ;    * result in (HL)
-SDCARD_READ_BLOCK: ; only manage SDSC for the moment
+;    * Success : carry flag reset
+SDCARD_READ_BLOCK: 
     PUSH BC
     PUSH DE
     PUSH HL
-; convert LBA to address (multiply by 512)
+    CP SPI_CS1_BIT
+    JP Z, .cs1_select
+    CP SPI_CS2_BIT
+    JP Z, .cs2_select
+    LD A, 0x70
+    JP .error
+.cs1_select:
+    CALL SPI_CS1_SELECT
+    JP .convertLBA
+.cs2_select:
+    CALL SPI_CS2_SELECT
+.convertLBA: ; convert LBA to address (multiply by 512)
     LD B, C    ; multiply by 256
     LD C, D
     LD D, E
@@ -174,13 +187,26 @@ SDCARD_READ_BLOCK: ; only manage SDSC for the moment
 
 
 ; Write a block of data to the SD card :
+;    * CS (SPI_CS1_BIT or SPI_CS2_BIT) in A
 ;    * LBA address in BCDE 
 ;    * result in (HL)
-SDCARD_WRITE_BLOCK: ; only manage SDSC for the moment
+;    * Success : carry flag reset
+SDCARD_WRITE_BLOCK:
     PUSH BC
     PUSH DE
-    PUSH HL
-; convert LBA to address (multiply by 512)
+;    PUSH HL
+    CP SPI_CS1_BIT
+    JP Z, .cs1_select
+    CP SPI_CS2_BIT
+    JP Z, .cs2_select
+    LD A, 0x70
+    JP .error
+.cs1_select:
+    CALL SPI_CS1_SELECT
+    JP .convertLBA
+.cs2_select:
+    CALL SPI_CS2_SELECT
+.convertLBA: ; convert LBA to address (multiply by 512)
     LD B, C    ; multiply by 256
     LD C, D
     LD D, E
@@ -245,27 +271,57 @@ SDCARD_WRITE_BLOCK: ; only manage SDSC for the moment
     CALL SPI_READ_BYTE
     OR A                ; 0x00 during SDCard write operation
     JR Z, .wait_busy    ; when done, return 0xFF
+
+.CMD13: ; check write status
+    PUSH HL
+    LD HL, SDCARD_CMD13
+    CALL SDCARD_SendCmd
+    POP HL
+    CALL SDCARD_Wait_R1 ; Wait for response from SD card
+    LD B, A             ; Store R1
+    CALL SPI_READ_BYTE  ; Get second byte (Status)
+    LD C, A             ; store the status
+    ;Test if success : B and C must be 0x00
+    LD A, B
+    OR C
+    JR NZ, .error
+
 ; reset the SPI lines
     CALL SPI_endCom
 ; reset the carry flag for success and return
     XOR A
-    POP HL
+;    POP HL
     POP DE
     POP BC
     RET
 .error:
     CALL SPI_endCom
     SCF
-    POP HL
+;    POP HL
     POP DE
     POP BC
     RET
 
-
+; Write a block of data to the SD card :
+;    * CS (SPI_CS1_BIT or SPI_CS2_BIT) in A
+;    * Return : Success carry flag reset A=0x00
 SDCARD_INIT: ; initialize the SD Card
     PUSH BC
     PUSH HL
     CALL SPI_Init
+
+    CP SPI_CS1_BIT
+    JP Z, .cs1_select
+    CP SPI_CS2_BIT
+    JP Z, .cs2_select
+    LD A, 0x70
+    JP .error
+.cs1_select:
+    CALL SPI_CS1_SELECT
+    JP .CMD0
+.cs2_select:
+    CALL SPI_CS2_SELECT
+    
 .CMD0:
     LD HL, SDCARD_CMD0 ; Prepare CMD0 command
     CALL SDCARD_SendCmd ; Send CMD0 to SD card
@@ -348,17 +404,34 @@ SDCARD_INIT: ; initialize the SD Card
     RLCA                ;rotate left ...
     RLCA                ; ... to put it in bit 0
     OR A
+    CALL SPI_endCom
     POP HL
     POP BC
     RET
 .error:
+    CALL SPI_endCom
     SCF
     POP HL
     POP BC
     RET
     
+; Read the write status (CMD13) from the SD card :
+;    * CS (SPI_CS1_BIT or SPI_CS2_BIT) in A
+;    * Return : Success Carry flag cleared and A=0x00
 SDCARD_GET_STATUS:
     PUSH HL
+    CP SPI_CS1_BIT
+    JP Z, .cs1_select
+    CP SPI_CS2_BIT
+    JP Z, .cs2_select
+    LD A, 0x72
+    JP .error
+.cs1_select:
+    CALL SPI_CS1_SELECT
+    JP .CMD13
+.cs2_select:
+    CALL SPI_CS2_SELECT
+.CMD13:
     LD HL, SDCARD_CMD13
     CALL SDCARD_SendCmd
     CALL SDCARD_Wait_R1 ; Wait for response from SD card
@@ -374,7 +447,8 @@ SDCARD_GET_STATUS:
     POP HL
     RET
 .error:
-    LD A, 0x13          ; Code erreur "Status Error"
+    LD A, C
+;    LD A, 0x13          ; Code erreur "Status Error"
     SCF
     POP HL
     RET
@@ -386,8 +460,6 @@ SDCARD_CMD0   :   DB  0x40, 0x00, 0x00, 0x00, 0x00, 0x95 ; CMD0 - GO_IDLE_STATE
 SDCARD_CMD8   :   DB  0x48, 0x00, 0x00, 0x01, 0xAA, 0x87 ; CMD8 - SEND_IF_COND
 SDCARD_CMD13  :   DB  0x4D, 0x00, 0x00, 0x00, 0x00, 0xFF ; CMD13 - SEND_STATUS
 SDCARD_CMD16  :   DB  0x50, 0x00, 0x00, 0x00, 0x02, 0xFF ; CMD16 - SET_BLOCKLEN (set block length to 512 bytes)
-;SDCARD_CMD17  :   DB  0x51, 0x00, 0x00, 0x00, 0x00, 0xFF ; CMD17 - READ_SINGLE_BLOCK
-;SDCARD_CMD24  :   DB  0x58, 0x00, 0x00, 0x00, 0x00, 0xFF ; CMD24 - WRITE_BLOCK
 SDCARD_CMD55  :   DB  0x77, 0x00, 0x00, 0x00, 0x00, 0x65 ; CMD55 - APP_CMD
 SDCARD_CMD58  :   DB  0x7A, 0x00, 0x00, 0x00, 0x00, 0xFD ; CMD58 - READ_OCR
 SDCARD_ACMD41 :   DB  0x69, 0x40, 0x00, 0x00, 0x00, 0x77 ; CMD41 - SEND_OP_COND (ACMD41)
