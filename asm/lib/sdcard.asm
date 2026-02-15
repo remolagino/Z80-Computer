@@ -321,7 +321,6 @@ SDCARD_INIT: ; initialize the SD Card
     JP .CMD0
 .cs2_select:
     CALL SPI_CS2_SELECT
-    
 .CMD0:
     LD HL, SDCARD_CMD0 ; Prepare CMD0 command
     CALL SDCARD_SendCmd ; Send CMD0 to SD card

@@ -19,23 +19,25 @@
 ;           * Error : A = Error Code, Carry set
 ; =============================================================================
 DISK_INIT:
-    PUSH BC
-    PUSH AF
-    CALL DISK_Select_Hardware
-    JP C, .error
     CALL SDCARD_INIT
-    JP C, .error
-    POP AF
-    OR A
-    POP BC
     RET
-.error:
-    LD B, A
-    POP AF
-    LD A, B
-    SCF
-    POP BC
-    RET
+;     PUSH BC
+;     PUSH AF
+;     CALL DISK_Select_Hardware
+;     JP C, .error
+;     CALL SDCARD_INIT
+;     JP C, .error
+;     POP AF
+;     OR A
+;     POP BC
+;     RET
+; .error:
+;     LD B, A
+;     POP AF
+;     LD A, B
+;     SCF
+;     POP BC
+;     RET
 
 ; =============================================================================
 ; DISK_READ
@@ -44,23 +46,25 @@ DISK_INIT:
 ;  * Error : A = Error Code, Carry set
 ; =============================================================================
 DISK_READ:
-    PUSH BC
-    PUSH AF
-    CALL DISK_Select_Hardware
-    JP C, .error
     CALL SDCARD_READ_BLOCK
-    JP C, .error
-    POP AF
-    OR A
-    POP BC
     RET
-.error:
-    LD B, A
-    POP AF
-    LD A, B
-    SCF
-    POP BC
-    RET
+;     PUSH BC
+;     PUSH AF
+;     CALL DISK_Select_Hardware
+;     JP C, .error
+;     CALL SDCARD_READ_BLOCK
+;     JP C, .error
+;     POP AF
+;     OR A
+;     POP BC
+;     RET
+; .error:
+;     LD B, A
+;     POP AF
+;     LD A, B
+;     SCF
+;     POP BC
+;     RET
 
 
 ; =============================================================================
@@ -70,23 +74,25 @@ DISK_READ:
 ;  * Error : A = Error Code, Carry set
 ; =============================================================================
 DISK_WRITE:
-    PUSH BC
-    PUSH AF
-    CALL DISK_Select_Hardware
-    JP C, .error
     CALL SDCARD_WRITE_BLOCK
-    JP C, .error
-    POP AF
-    OR A
-    POP BC
     RET
-.error:
-    LD B, A
-    POP AF
-    LD A, B
-    SCF
-    POP BC
-    RET
+;     PUSH BC
+;     PUSH AF
+;     CALL DISK_Select_Hardware
+;     JP C, .error
+;     CALL SDCARD_WRITE_BLOCK
+;     JP C, .error
+;     POP AF
+;     OR A
+;     POP BC
+;     RET
+; .error:
+;     LD B, A
+;     POP AF
+;     LD A, B
+;     SCF
+;     POP BC
+;     RET
 
 ; =============================================================================
 ; DISK_STATUS
