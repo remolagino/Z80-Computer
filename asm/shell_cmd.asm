@@ -17,6 +17,9 @@
 ; * failure : A= error code, Carry flag set
 SHELL_LS:
     PUSH HL
+; get the mirror DCB
+    CALL FAT_SELECT_MIRROR_DCB
+    JP C, .error
 ; store the current drive and sector
     PUSH DE
     LD (SHELL_CURR_DRIVE), A
@@ -30,7 +33,7 @@ SHELL_LS:
 ; Put the name of the volume:
     LD HL, SHELL_MSG_VolLabel
     CALL SHELL_CopyString
-    LD HL, FAT_VOL_LABEL
+    LD HL, FAT_MIRROR_VOL_LABEL
     CALL SHELL_CopyString
     LD A, 0x0A
     LD (DE), A
@@ -58,7 +61,7 @@ SHELL_LS:
     JP Z, .exit
     CP 0xE5
     JP Z, .nextEntry
-    LD A, (IX + DIR_ENTRY.ATTRIBUTE)
+    LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
     AND 0x0F
 ;    CP 0x0F
     JP NZ, .nextEntry
@@ -129,17 +132,17 @@ SHELL_CopyString:
 SHELL_DirEntryProcess:
     PUSH BC
     PUSH HL
-    LD A, (IX + DIR_ENTRY.LAST_MODIF_DATE)
+    LD A, (IX + FAT_DIR_ENTRY.LAST_MODIF_DATE)
     LD C, A
-    LD A, (IX + DIR_ENTRY.LAST_MODIF_DATE + 1)
+    LD A, (IX + FAT_DIR_ENTRY.LAST_MODIF_DATE + 1)
     LD B, A
     CALL SHELL_WordToDate
     LD A, ' '
     LD (DE), A
     INC DE
-    LD A, (IX + DIR_ENTRY.LAST_MODIF_TIME)
+    LD A, (IX + FAT_DIR_ENTRY.LAST_MODIF_TIME)
     LD C, A
-    LD A, (IX + DIR_ENTRY.LAST_MODIF_TIME + 1)
+    LD A, (IX + FAT_DIR_ENTRY.LAST_MODIF_TIME + 1)
     LD B, A
     CALL SHELL_WordToTime
     LD A, ' '
@@ -148,7 +151,7 @@ SHELL_DirEntryProcess:
     LD A, ' '
     LD (DE), A
     INC DE
-    LD A, (IX + DIR_ENTRY.ATTRIBUTE)
+    LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
     CALL Bin2Hex_DE
     LD A, ' '
     LD (DE), A
@@ -172,9 +175,9 @@ SHELL_DirEntryProcess:
     LD A, ' '
     LD (DE), A
     INC DE
-    LD A, (IX + DIR_ENTRY.START_CLUSTER + 1)
+    LD A, (IX + FAT_DIR_ENTRY.START_CLUSTER + 1)
     CALL Bin2Hex_DE
-    LD A, (IX + DIR_ENTRY.START_CLUSTER)
+    LD A, (IX + FAT_DIR_ENTRY.START_CLUSTER)
     CALL Bin2Hex_DE
  
     POP HL
