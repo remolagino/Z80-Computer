@@ -17,27 +17,57 @@ SDCARD_BUFFER2 EQU SDCARD_BUFFER + 0x0200
 
 
 Main:
-    LD DE, SDCARD_Init_MSG
+
+    LD A, '|'
+    LD (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL), A
+    LD (FAT_TMP_DWORD + 4), A
+    LD (FAT_TMP_DWORD + 5), A
+    LD (FAT_TMP_DWORD + 6), A
+    LD (FAT_TMP_DWORD + 7), A
+    LD (FAT_TMP_DWORD + 8), A
+    LD (FAT_TMP_DWORD + 9), A
+    LD (FAT_TMP_DWORD + 10), A
+    LD (FAT_TMP_DWORD + 11), A
+
+    CALL FAT_BOOT_INIT_DCBs
+
+    LD DE, SDCARD_Init1_MSG
     CALL SDCARD_MsgPrint
-    ; LD A, 'Z'
-    ; CALL FAT_MOUNT
-    ; LD A, 'B'
-    ; CALL FAT_MOUNT
-    ; CALL C, .error
-    ; CALL SDCARD_CodePrint
+
     LD A, 'C'
     CALL FAT_MOUNT
-    CALL C, .error
+    JP C, .initError
     CALL SDCARD_CodePrint
 
-;     LD A, 'C'
+    ; LD A ,'C'
+    ; CALL FAT_SELECT_MIRROR_DCB
+
+    ; LD BC, 0x0100
+    ; CALL FAT_GetNextCluster
+    ; LD B, D
+    ; LD C, E
+    ; LD DE, SDCARD_WORKSPACE
+    ; CALL MATH_WORD_TO_STRING
+    ; CALL SDCARD_MsgPrintLN
+
+    
+
+;     LD DE, SDCARD_Init2_MSG
+;     CALL SDCARD_MsgPrint
+;     LD A, SPI_CS1_BIT
 ;     LD HL, SDCARD_BUFFER
-;     LD BC, (FAT_LBA_ROOT + 2)
-;     LD DE, (FAT_LBA_ROOT)
-;     CALL DISK_WRITE
-; ;    CALL DISK_READ
+;     LD BC, (FAT_MIRROR_LBA_FAT1 + 2)
+;     LD DE, (FAT_MIRROR_LBA_FAT1)
+;  ;    CALL DISK_WRITE
+;     CALL DISK_READ
+;     JP C, .initError
+;     CALL SDCARD_CodePrint
 
-
+;     LD BC, FAT_MIRROR_MAX_CLUSTER_NUMBER
+;     LD DE, SDCARD_WORKSPACE
+;     CALL MATH_DWORD_TO_STRING
+;     CALL SDCARD_MsgPrintLN
+;     RET
 .loop:
     CALL LineEdit_Init
     LD HL, (CURSOR_IDX)
@@ -54,13 +84,13 @@ Main:
     INC HL
     CALL HexWord2Bin
     JP NZ, .error
-    LD B, D
+    LD B, D ; cluster number needs to be in BC
     LD C, E
 
     ; LD DE, SDCARD_LS_MSG
     ; CALL SDCARD_MsgPrint
     LD A, (SD_DRIVE_LETTER)
- ;   LD BC, 0x0000
+
     LD DE, SDCARD_BUFFER2
     CALL SHELL_LS
     JP C, .error
@@ -78,11 +108,21 @@ Main:
     CALL SDCARD_ErrorMsgPrint
     JP .loop
 ;    RET
+.initError:
+    CALL SDCARD_ErrorMsgPrint
+    RET
 
 SDCARD_MsgPrint: ; print message in DE
     PUSH HL
     LD HL, (CURSOR_IDX)
     CALL PutS
+    LD (CURSOR_IDX), HL
+    POP HL
+    RET
+SDCARD_MsgPrintLN: ; print message in DE
+    PUSH HL
+    LD HL, (CURSOR_IDX)
+    CALL PutS_LN
     LD (CURSOR_IDX), HL
     POP HL
     RET
@@ -128,22 +168,24 @@ SDCARD_ErrorMsgPrint: ; print and error message for error code in A
 ; Text Constants
 LF_CR:
     DB 0x0D, 0x0A, 0x00
-SDCARD_Init_MSG:
-    DB "Starting Initialisation : ", 0x00
+SDCARD_Init1_MSG:
+    DB "Starting Initialisation 1 : ", 0x00
+SDCARD_Init2_MSG:
+    DB "Starting Initialisation 2 : ", 0x00
 SDCARD_INIT_SUCCESS_MSG:
     DB "SD Card initialized successfully.", 0x00
 SDCARD_ERRROR_MSG:
     DB "Error: ", 0x00
-SDCARD_STATUS_MSG:
-    DB "Get Status Result : ", 0x00
-SDCARD_GetBlock_MSG :
-    DB "Block Received : ", 0x00
-SDCARD_WriteBlock_MSG:
-    DB "Write back the block : ", 0x00
-SDCARD_LS_MSG:
-    DB "LS test : ", 0x00
-SDCARD_Time_MSG:
-    DB "Time test : ", 0x00
+; SDCARD_STATUS_MSG:
+;     DB "Get Status Result : ", 0x00
+; SDCARD_GetBlock_MSG :
+;     DB "Block Received : ", 0x00
+; SDCARD_WriteBlock_MSG:
+;     DB "Write back the block : ", 0x00
+; SDCARD_LS_MSG:
+;     DB "LS test : ", 0x00
+; SDCARD_Time_MSG:
+;     DB "Time test : ", 0x00
 
 SD_DRIVE_LETTER:
     DB 0x00

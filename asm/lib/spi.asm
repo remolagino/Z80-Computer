@@ -20,6 +20,7 @@ SPI_CS2_BIT EQU 3 ; CS bit position
 SPI_Init: ; Init PIO for SPI on Port B - use A
     PUSH AF
     PUSH BC
+
     LD A, PIO_MODE3_CONTROL ; Set mode 3 Control
     OUT (PIO_CTRL_B), A
     LD A, PIO_PORT_CFG; set MISO as input
@@ -40,8 +41,7 @@ SPI_Init: ; Init PIO for SPI on Port B - use A
     OUT (PIO_DATA_B), A ; Set SCLK low
     DJNZ .initloop ; Loop until all bits are sent
 
-;    RES SPI_CS1_BIT, A; Set CS low
-    RES SPI_MOSI_BIT, A; Set MOSI low
+;    RES SPI_MOSI_BIT, A; Set MOSI low
     RES SPI_SCLK_BIT, A; Set SCLK low
     OUT (PIO_DATA_B), A ; Set CS low
     POP BC
@@ -70,6 +70,8 @@ SPI_CS2_SELECT:
 SPI_endCom:
     PUSH AF
 ;    LD A, 0xFF ; Set all bits high (MISO input will read high, MOSI SCLK CS will be high)
+    ; LD A, 0xFF
+    ; CALL SPI_SEND_BYTE_A
     IN A, (PIO_DATA_B)
     SET SPI_CS1_BIT, A; Set CS high
     SET SPI_CS2_BIT, A; Set CS high    
@@ -81,12 +83,12 @@ SPI_endCom:
     POP AF
     RET
 
+
 SPI_SEND_BYTE_A: ; Send a byte to the SD card (byte in A)
     PUSH BC
     LD C, A
 ;    LD A, 0xFF
     IN A, (PIO_DATA_B) ; restore CS1 or CS2 byte
-;    RES SPI_CS1_BIT, A
     RES SPI_SCLK_BIT, A
     SET SPI_MISO_BIT, A ; Set MISO line high - do nothing as input
     OUT (PIO_DATA_B), A ; Set SCLK low
@@ -108,6 +110,7 @@ SPI_SEND_BYTE_A: ; Send a byte to the SD card (byte in A)
     POP BC
     RET
 
+
 SPI_SEND_BYTES: ; Send multiple bytes to the SD card (HL points to data, B is length)
     PUSH BC
     PUSH HL
@@ -124,6 +127,7 @@ SPI_SEND_BYTES: ; Send multiple bytes to the SD card (HL points to data, B is le
 SPI_READ_BYTE: ; read a byte in SPI - result in A
     PUSH BC
     PUSH DE
+
     LD E, 0xFF ; Response message
     IN A, (PIO_DATA_B) ; restore CS1 or CS2 bit
 ;    LD A, 0xFF 
@@ -137,8 +141,9 @@ SPI_READ_BYTE: ; read a byte in SPI - result in A
     SET SPI_SCLK_BIT, A
     LD C, A
     OUT (PIO_DATA_B), A ; Set SCLK high
+    NOP
     IN A, (PIO_DATA_B) ; Read response from MISO line
-    BIT SPI_MISO_BIT,A
+    BIT SPI_MISO_BIT, A
     JP NZ, .continue ; If MISO is high, don't reset bit in response
     RES 0, E 
 .continue:

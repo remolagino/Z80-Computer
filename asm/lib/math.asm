@@ -72,6 +72,36 @@ MATH_ADD_WORD_TO_DWORD:
     POP AF
     RET
 
+; Substract a WORD in HL to a DWORD in (BC)
+; * result in (DE)
+MATH_SUB_WORD_TO_DWORD:
+    PUSH AF
+    PUSH BC
+    PUSH DE
+    LD A, (BC)
+    SUB L
+    LD (DE), A
+    INC BC
+    INC DE
+    LD A, (BC)
+    SBC A, H
+    LD (DE), A
+    INC BC
+    INC DE
+    LD A, (BC)
+    SBC A, 0x00
+    LD (DE), A
+    INC BC
+    INC DE
+    LD A, (BC)
+    SBC A, 0x00
+    LD (DE), A
+    POP DE
+    POP BC
+    POP AF
+    RET
+
+
 
 ; Mutliply a word in HL by a Byte in A
 ; * Result is a DWORD in (BC)
@@ -103,6 +133,55 @@ MATH_MULT_WORD_BYTE:
     JP NZ, .multLoop
     POP DE
     POP AF
+    RET
+
+; Shift right a dword in (BC)
+; * Number of shift in A
+; * Result in (DE)
+MATH_SHIFT_RIGHT_DWORD_BY_N:
+    PUSH BC
+    PUSH DE
+    PUSH DE
+    PUSH AF
+    LD A, (BC)
+    LD E, A
+    INC BC
+    LD A, (BC)
+    LD D, A
+    INC BC
+    LD A, (BC)
+    LD L, A
+    INC BC
+    LD A, (BC)
+    LD H, A
+    POP AF
+    OR A
+    JP Z, .shiftEnd ; no shift if 0
+    LD B, A
+.shiftLoop:
+    SRL H
+    RR L
+    RR D
+    RR E
+    DJNZ .shiftLoop
+.shiftEnd:
+    LD B, D
+    LD C, E
+    
+    POP DE
+    LD A, C
+    LD (DE), A
+    INC DE
+    LD A, B
+    LD (DE), A
+    INC DE
+    LD A, L
+    LD (DE), A
+    INC DE
+    LD A, H
+    LD (DE), A
+    POP DE
+    POP BC
     RET
 
 ; Format a DWORD in (BC) as printable string in (DE) (10 char long + 0x00)

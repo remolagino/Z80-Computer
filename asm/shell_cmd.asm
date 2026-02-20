@@ -22,18 +22,17 @@ SHELL_LS:
     JP C, .error
 ; store the current drive and sector
     PUSH DE
-    LD (SHELL_CURR_DRIVE), A
-    LD (SHELL_CURR_CLUSTER), BC
+    LD (FS_CURR_DRIVE), A
+    LD (FS_CURR_CLUSTER), BC
     LD HL, BC
     CALL FAT_GetLBAfromCluster
-    LD (SHELL_CURR_SECTOR), DE
-    LD (SHELL_CURR_SECTOR + 2), BC
+    LD (FS_CURR_SECTOR), DE
+    LD (FS_CURR_SECTOR + 2), BC
     POP DE
-
 ; Put the name of the volume:
     LD HL, SHELL_MSG_VolLabel
     CALL SHELL_CopyString
-    LD HL, FAT_MIRROR_VOL_LABEL
+    LD HL, FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.VOL_LABEL
     CALL SHELL_CopyString
     LD A, 0x0A
     LD (DE), A
@@ -41,17 +40,15 @@ SHELL_LS:
     LD A, 0x0D
     LD (DE), A
     INC DE
-
 .sectorLoop:
     PUSH DE
     LD HL, FAT_BUFFER
-    LD A, (SHELL_CURR_DRIVE)
-    LD DE, (SHELL_CURR_SECTOR)
-    LD BC, (SHELL_CURR_SECTOR + 2)
+    LD A, (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.SDCARD_CS)
+    LD DE, (FS_CURR_SECTOR)
+    LD BC, (FS_CURR_SECTOR + 2)
     CALL DISK_READ
     POP DE
     JP C, .error
-
 ; iterate on the directory entries  in the sector
     LD IX, FAT_BUFFER
     LD B, 16 ; max number dir entries in a sector
@@ -82,19 +79,19 @@ SHELL_LS:
     DJNZ .dirLoop
 ;  Increment to the next sector
     LD B, 0x01
-    LD A, (SHELL_CURR_SECTOR)
+    LD A, (FS_CURR_SECTOR)
     ADD B
-    LD (SHELL_CURR_SECTOR), A
+    LD (FS_CURR_SECTOR), A
     LD B, 0x00
-    LD A, (SHELL_CURR_SECTOR + 1)
+    LD A, (FS_CURR_SECTOR + 1)
     ADC B
-    LD (SHELL_CURR_SECTOR + 1), A
-    LD A, (SHELL_CURR_SECTOR + 2)
+    LD (FS_CURR_SECTOR + 1), A
+    LD A, (FS_CURR_SECTOR + 2)
     ADC B
-    LD (SHELL_CURR_SECTOR + 2), A
-    LD A, (SHELL_CURR_SECTOR + 3)
+    LD (FS_CURR_SECTOR + 2), A
+    LD A, (FS_CURR_SECTOR + 3)
     ADC B
-    LD (SHELL_CURR_SECTOR + 3), A
+    LD (FS_CURR_SECTOR + 3), A
     JP .sectorLoop
 .exit:
     LD A, 0x00
@@ -265,12 +262,6 @@ SHELL_WordToTime:
     POP BC
     RET
 
-SHELL_CURR_CLUSTER:
-    WORD 0x0000
-SHELL_CURR_SECTOR:
-    DWORD 0x00000000
-SHELL_CURR_DRIVE:
-    DB 0x00
 
 SHELL_MSG_FatAddr DB 'FAT Address : ', 0x00
 SHELL_MSG_PartStart DB 'Partition Start Address : ', 0x00

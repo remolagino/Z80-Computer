@@ -14,6 +14,7 @@ SDCARD_SendCmd: ; Send a command to the SD card (in HL)
     ; Input: HL points to SDCARD_COMMAND structure
     PUSH HL
     PUSH BC
+
     LD A, 0x00
     LD B, 0x06 ; Number of bytes to send (CMD + ARG + CRC)
     CALL SPI_SEND_BYTES
@@ -41,10 +42,9 @@ SDCARD_Wait_R1: ; Wait for a response from the SD card - resp in A
     SCF ; set carry flag in case of timeout
     JP .exit
 .validResponse:
-    ; LD HL, SDCARD_R1 ; Response is valid, return
-    ; LD (HL), E ; Store response in SDCARD_R1
-    XOR A ; reset carry flag
-    LD A, E
+;    CALL SPI_endCom
+    OR A ; reset carry flag
+    LD A, E  ; restore return code
 .exit:
     POP HL
     POP DE
@@ -52,12 +52,11 @@ SDCARD_Wait_R1: ; Wait for a response from the SD card - resp in A
     RET
 
 
-SDCARD_GetResponse: ; get response from  SD card, result in (HL)
+SDCARD_GetResponse_: ; get response from  SD card, result in (HL)
     PUSH BC
     PUSH DE
     PUSH HL
     LD C, 0x04 ; Number of  bytes to get
-;    LD HL, SDCARD_RESPONSE ; Response buffer address
 .byteLoop:
     CALL SPI_READ_BYTE ; Read a byte from the SD card
     LD (HL), A
@@ -76,7 +75,6 @@ SDCARD_WaitDataToken: ; Wait for a token from the SD card,token in (HL), Z flag 
     PUSH DE
     PUSH HL
     LD B, 0x30 ; Number of  bytes to get
-;    LD HL, SDCARD_RESPONSE ; Response buffer address
 .byteLoop:
     CALL SPI_READ_BYTE
     ; check if E is still 0xFF, if not this is a valid response
@@ -306,6 +304,11 @@ SDCARD_WRITE_BLOCK:
 ;    * CS (SPI_CS1_BIT or SPI_CS2_BIT) in A
 ;    * Return : Success carry flag reset A=0x00
 SDCARD_INIT: ; initialize the SD Card
+    ; PUSH AF
+    ; LD A ,'I'
+    ; CALL SendChar_A
+    ; POP AF
+
     PUSH BC
     PUSH HL
     CALL SPI_Init
@@ -322,6 +325,11 @@ SDCARD_INIT: ; initialize the SD Card
 .cs2_select:
     CALL SPI_CS2_SELECT
 .CMD0:
+    ; PUSH AF
+    ; LD A ,'0'
+    ; CALL SendChar_A
+    ; POP AF
+
     LD HL, SDCARD_CMD0 ; Prepare CMD0 command
     CALL SDCARD_SendCmd ; Send CMD0 to SD card
     CALL SDCARD_Wait_R1 ; Wait for response from SD card
@@ -329,9 +337,14 @@ SDCARD_INIT: ; initialize the SD Card
     CP 0x01 ; correct response
     JP Z, .CMD8
     AND 0x0F
-    OR SDCARD_CMD0_ERR
+    OR  SDCARD_CMD0_ERR
     JP .error
 .CMD8:
+    ; PUSH AF
+    ; LD A ,'8'
+    ; CALL SendChar_A
+    ; POP AF
+
     LD HL, SDCARD_CMD8 ; Prepare CMD8 command
     CALL SDCARD_SendCmd ; Send CMD8 to SD card
     CALL SDCARD_Wait_R1 ; Wait for response from SD card
@@ -339,7 +352,7 @@ SDCARD_INIT: ; initialize the SD Card
     CP 0x01 ; correct response
     JP Z, .cmd8_getResp
     AND 0x0F
-    OR SDCARD_CMD8_ERR
+    OR  SDCARD_CMD8_ERR
     JP .error
 .cmd8_getResp:
     CALL SPI_READ_BYTE ; byte 1 (reserved)
@@ -348,7 +361,7 @@ SDCARD_INIT: ; initialize the SD Card
     CALL SPI_READ_BYTE ; byte 4 (check Pattern)
     CP 0xAA
     JP Z, .CMD55
-    LD A, SDCARD_CMD8_ERR
+    LD A, SDCARD_CMD8_ERR + 0x0F
     JP .error
 .CMD55:
     LD BC, 200 ; counts number of iteration before success
@@ -357,6 +370,11 @@ SDCARD_INIT: ; initialize the SD Card
     LD A, B
     OR C
     JP Z, .cmd41_timeOut
+    ; PUSH AF
+    ; LD A ,'5'
+    ; CALL SendChar_A
+    ; POP AF
+
     LD HL, SDCARD_CMD55 ; Prepare CMD55 command
     CALL SDCARD_SendCmd ; Send CMD55 to SD card
     CALL SDCARD_Wait_R1 ; Wait for response from SD card
@@ -367,6 +385,11 @@ SDCARD_INIT: ; initialize the SD Card
     OR SDCARD_CMD55_ERR
     JP .error
 .ACMD41:
+    ; PUSH AF
+    ; LD A ,'4'
+    ; CALL SendChar_A
+    ; POP AF
+
     LD HL, SDCARD_ACMD41 ; Prepare ACMD41 command
     CALL SDCARD_SendCmd ; Send ACMD41 to SD card
     CALL SDCARD_Wait_R1 ; Wait for response from SD card
@@ -383,6 +406,11 @@ SDCARD_INIT: ; initialize the SD Card
     OR SDCARD_CMD41_ERR
     JP .error
 .CMD58
+    ; PUSH AF
+    ; LD A ,'Z'
+    ; CALL SendChar_A
+    ; POP AF
+
     LD HL, SDCARD_CMD58 ; Prepare CMD58 command
     CALL SDCARD_SendCmd ; Send CMD58 to SD card
     CALL SDCARD_Wait_R1 ; Wait for response from SD card
@@ -413,6 +441,7 @@ SDCARD_INIT: ; initialize the SD Card
     POP HL
     POP BC
     RET
+    
     
 ; Read the write status (CMD13) from the SD card :
 ;    * CS (SPI_CS1_BIT or SPI_CS2_BIT) in A
@@ -446,6 +475,7 @@ SDCARD_GET_STATUS:
     POP HL
     RET
 .error:
+    CALL SPI_endCom   
     LD A, C
 ;    LD A, 0x13          ; Code erreur "Status Error"
     SCF

@@ -83,6 +83,8 @@ LBA_ROOT DWORD ; = LBA_FAT2 + Sectors_Per_FAT
 LBA_DATA_START DWORD ; = LBA_Root + Taille_du_Root_Dir
 ROOT_DIR_SIZE WORD ; = (max root entries * 32)/512
 SPC BYTE ; Sectors per Cluster
+SPC_SHIFT BYTE ; number of shift to divide by SPC
+MAX_CLUSTER_NB DWORD ; max number of clusters available for 
     ENDS
 
     ENDIF
