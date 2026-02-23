@@ -10,25 +10,19 @@
     INCLUDE "./fs_api.asm"
 
 
-; FAT_LS : list the files and directory in a directory
+; SHELL_LS : list the files and directory in a directory
 ; * Params : Drive letter in A, cluster number in BC
 ; * Result in (DE)
 ; * success A=0x00, Carry flag reset
 ; * failure : A= error code, Carry flag set
 SHELL_LS:
-    PUSH HL
-; get the mirror DCB
-    CALL FAT_SELECT_MIRROR_DCB
-    JP C, .error
-; store the current drive and sector
+    PUSH BC
     PUSH DE
-    LD (FS_CURR_DRIVE), A
-    LD (FS_CURR_CLUSTER), BC
+    PUSH HL
+; init var and read first sector
     LD HL, BC
-    CALL FAT_GetLBAfromCluster
-    LD (FS_CURR_SECTOR), DE
-    LD (FS_CURR_SECTOR + 2), BC
-    POP DE
+    CALL FS_OpenDir
+    JP C, .error
 ; Put the name of the volume:
     LD HL, SHELL_MSG_VolLabel
     CALL SHELL_CopyString
@@ -40,69 +34,41 @@ SHELL_LS:
     LD A, 0x0D
     LD (DE), A
     INC DE
-.sectorLoop:
-    PUSH DE
-    LD HL, FAT_BUFFER
-    LD A, (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.SDCARD_CS)
-    LD DE, (FS_CURR_SECTOR)
-    LD BC, (FS_CURR_SECTOR + 2)
-    CALL DISK_READ
-    POP DE
-    JP C, .error
+
 ; iterate on the directory entries  in the sector
-    LD IX, FAT_BUFFER
-    LD B, 16 ; max number dir entries in a sector
-.dirLoop:
+.entryLoop:
     LD A, (IX)
     CP 0x00
     JP Z, .exit
     CP 0xE5
     JP Z, .nextEntry
     LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
-    AND 0x0F
-;    CP 0x0F
-    JP NZ, .nextEntry
+;     AND 0x0F
+    CP 0x0F
+    JP Z, .nextEntry
     ; do the stuff on the dir entry
     CALL SHELL_DirEntryProcess
-    LD A, 0x0A
-    LD (DE), A
-    INC DE
-    LD A, 0x0D
-    LD (DE), A
-    INC DE
     ; end of stuff on the dir entry, now we loop
 .nextEntry:
-    PUSH BC
-    LD BC, 32
-    ADD IX, BC
-    POP BC
-    DJNZ .dirLoop
-;  Increment to the next sector
-    LD B, 0x01
-    LD A, (FS_CURR_SECTOR)
-    ADD B
-    LD (FS_CURR_SECTOR), A
-    LD B, 0x00
-    LD A, (FS_CURR_SECTOR + 1)
-    ADC B
-    LD (FS_CURR_SECTOR + 1), A
-    LD A, (FS_CURR_SECTOR + 2)
-    ADC B
-    LD (FS_CURR_SECTOR + 2), A
-    LD A, (FS_CURR_SECTOR + 3)
-    ADC B
-    LD (FS_CURR_SECTOR + 3), A
-    JP .sectorLoop
+    CALL FS_GetNextEntry
+    JP C, .error
+    JP NZ, .entryLoop
 .exit:
     LD A, 0x00
     LD (DE), A
     OR A
     POP HL
+    POP DE
+    POP BC
     RET
 .error:
     SCF
     POP HL
+    POP DE
+    POP BC
     RET
+
+
 
 
 ; copy the null_terminated string in (HL) to (DE)
@@ -176,7 +142,14 @@ SHELL_DirEntryProcess:
     CALL Bin2Hex_DE
     LD A, (IX + FAT_DIR_ENTRY.START_CLUSTER)
     CALL Bin2Hex_DE
- 
+
+    LD A, 0x0A
+    LD (DE), A
+    INC DE
+    LD A, 0x0D
+    LD (DE), A
+    INC DE
+
     POP HL
     POP BC
     RET

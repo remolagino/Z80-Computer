@@ -15,6 +15,8 @@
 SDCARD_BUFFER  EQU 0x7000
 SDCARD_BUFFER2 EQU SDCARD_BUFFER + 0x0200
 
+SD_CURRENT_DIR :
+    WORD 0x0000
 
 Main:
 
@@ -39,68 +41,60 @@ Main:
     JP C, .initError
     CALL SDCARD_CodePrint
 
-    ; LD A ,'C'
-    ; CALL FAT_SELECT_MIRROR_DCB
+    LD DE, SDCARD_BUFFER2
+    LD A, 'C'
+    LD BC, (SD_CURRENT_DIR)
+    CALL SHELL_LS
+    JP C, .initError
+    CALL SDCARD_MsgPrintLN
 
-    ; LD BC, 0x0100
-    ; CALL FAT_GetNextCluster
-    ; LD B, D
-    ; LD C, E
-    ; LD DE, SDCARD_WORKSPACE
-    ; CALL MATH_WORD_TO_STRING
-    ; CALL SDCARD_MsgPrintLN
-
-    
-
-;     LD DE, SDCARD_Init2_MSG
-;     CALL SDCARD_MsgPrint
-;     LD A, SPI_CS1_BIT
-;     LD HL, SDCARD_BUFFER
-;     LD BC, (FAT_MIRROR_LBA_FAT1 + 2)
-;     LD DE, (FAT_MIRROR_LBA_FAT1)
-;  ;    CALL DISK_WRITE
-;     CALL DISK_READ
-;     JP C, .initError
-;     CALL SDCARD_CodePrint
-
-;     LD BC, FAT_MIRROR_MAX_CLUSTER_NUMBER
-;     LD DE, SDCARD_WORKSPACE
-;     CALL MATH_DWORD_TO_STRING
-;     CALL SDCARD_MsgPrintLN
-;     RET
 .loop:
     CALL LineEdit_Init
     LD HL, (CURSOR_IDX)
     CALL LineEdit
     LD DE, LF_CR
     CALL PutS
-     LD (CURSOR_IDX), HL
+    LD (CURSOR_IDX), HL
 
-    LD HL, LINE_EDIT_BUFFER_ADDRESS
-    LD A, (HL)
-    CP '²'
+    LD DE, LINE_EDIT_BUFFER_ADDRESS
+    LD A, (DE)
+    CP '~'
     JP Z, .exit
-    LD (SD_DRIVE_LETTER), A
-    INC HL
-    CALL HexWord2Bin
-    JP NZ, .error
-    LD B, D ; cluster number needs to be in BC
-    LD C, E
+ 
+    ; LD HL, 0x5D00
+    ; CALL FS_FileNamePrep
+    ; JP C, .error
+    ; EX DE, HL
+    ; CALL SDCARD_MsgPrintLN
 
-    ; LD DE, SDCARD_LS_MSG
-    ; CALL SDCARD_MsgPrint
-    LD A, (SD_DRIVE_LETTER)
+    LD A, 'C'
+    LD HL, (SD_CURRENT_DIR)
+    CALL FS_followPath
+;    CALL FS_SearchEntry
+    JP C, .notFound
+    
+    CALL MATH_WORD_TO_STRING
+    CALL SDCARD_MsgPrintLN
 
+    LD C, (IX + FAT_DIR_ENTRY.START_CLUSTER)
+    LD B, (IX + FAT_DIR_ENTRY.START_CLUSTER + 1)
+    LD (SD_CURRENT_DIR), BC
+
+    LD A, 'C'
     LD DE, SDCARD_BUFFER2
     CALL SHELL_LS
     JP C, .error
     CALL SDCARD_CodePrint
 
-    LD HL, (CURSOR_IDX)
     LD DE, SDCARD_BUFFER2
-    CALL PutS_LN
-    LD (CURSOR_IDX), HL
+    CALL SDCARD_MsgPrintLN
     
+    JP .loop
+.notFound:
+    LD DE, SD_NotFound
+    CALL SDCARD_MsgPrint
+    LD DE, LINE_EDIT_BUFFER_ADDRESS
+    CALL SDCARD_MsgPrintLN
     JP .loop
 .exit
     RET
@@ -111,6 +105,53 @@ Main:
 .initError:
     CALL SDCARD_ErrorMsgPrint
     RET
+
+
+SDCARD_print_FS_Struct:
+    PUSH BC
+    PUSH DE
+    PUSH HL
+    LD DE, SD_FsStructClust
+    CALL SDCARD_MsgPrint
+    LD DE, SDCARD_WORKSPACE
+    LD BC, (FS_VAR + FS_STRUCT.CURR_CLUSTER)
+    CALL MATH_WORD_TO_STRING
+    CALL SDCARD_MsgPrint
+
+    LD DE, SD_FsStructSect
+    CALL SDCARD_MsgPrint
+    LD DE, SDCARD_WORKSPACE
+    LD BC, FS_VAR + FS_STRUCT.CURR_SECTOR
+    CALL MATH_DWORD_TO_STRING
+    CALL SDCARD_MsgPrint
+
+    LD DE, SD_FsStructIdx
+    CALL SDCARD_MsgPrint
+    LD DE, SDCARD_WORKSPACE
+    LD A, (FS_VAR + FS_STRUCT.CURR_SECTOR_IDX)
+    CALL Bin2BCD
+;    LD A, H
+;    CALL Bin2Hex_DE
+    LD A, L
+    CALL Bin2Hex_DE
+    LD A, 0x00
+    LD (DE), A
+    LD DE, SDCARD_WORKSPACE
+    CALL SDCARD_MsgPrintLN
+    POP HL
+    POP DE
+    POP BC
+    RET
+SD_FsStructClust :
+    DB "Cluster : ",0x00
+SD_FsStructSect :
+    DB " - Sector : ",0x00
+SD_FsStructIdx :
+    DB " - Idx : ",0x00
+SD_FsEnd :
+    DB "End Of Chain :", 0x00
+SD_NotFound :
+    DB "Not Found : ", 0x00
 
 SDCARD_MsgPrint: ; print message in DE
     PUSH HL
@@ -176,19 +217,10 @@ SDCARD_INIT_SUCCESS_MSG:
     DB "SD Card initialized successfully.", 0x00
 SDCARD_ERRROR_MSG:
     DB "Error: ", 0x00
-; SDCARD_STATUS_MSG:
-;     DB "Get Status Result : ", 0x00
-; SDCARD_GetBlock_MSG :
-;     DB "Block Received : ", 0x00
-; SDCARD_WriteBlock_MSG:
-;     DB "Write back the block : ", 0x00
-; SDCARD_LS_MSG:
-;     DB "LS test : ", 0x00
-; SDCARD_Time_MSG:
-;     DB "Time test : ", 0x00
+
 
 SD_DRIVE_LETTER:
-    DB 0x00
+    DB 'C'
 SDCARD_WORKSPACE:
     BLOCK 0x10, 0x00
 

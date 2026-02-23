@@ -170,7 +170,7 @@ SDCARD_READ_BLOCK:
 ; reset the SPI lines
     CALL SPI_endCom
 ; reset the carry flag for success and return
-    XOR A
+    OR A
     POP HL
     POP DE
     POP BC

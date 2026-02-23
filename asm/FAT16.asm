@@ -11,19 +11,6 @@ FAT_RAM_START EQU 0x8000
 FAT_DCB_B EQU FAT_RAM_START
 FAT_DCB_C EQU FAT_DCB_B + FAT_DRIVE_CONTROL
 FAT_MIRROR_DCB EQU FAT_DCB_C + FAT_DRIVE_CONTROL
-; FAT_MIRROR_DRIVE_LETTER EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.DRIVE_LETTER
-; FAT_MIRROR_MOUNTED EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.MOUNTED
-; FAT_MIRROR_SDCARD_CS EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.SDCARD_CS
-; FAT_MIRROR_VOL_LABEL EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.VOL_LABEL
-; FAT_MIRROR_LBA_START EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.LBA_START
-; FAT_MIRROR_LBA_FAT1 EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.LBA_FAT1
-; FAT_MIRROR_LBA_FAT2 EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.LBA_FAT2
-; FAT_MIRROR_LBA_ROOT EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.LBA_ROOT
-; FAT_MIRROR_LBA_DATA_START EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.LBA_DATA_START
-; FAT_MIRROR_ROOT_DIR_SIZE EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.ROOT_DIR_SIZE
-; FAT_MIRROR_SPC EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.SPC
-; FAT_MIRROR_SPC_SHIFT EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.SPC_SHIFT
-; FAT_MIRROR_MAX_CLUSTER_NUMBER EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.MAX_CLUSTER_NB
 
 FAT_TMP_DWORD EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL+1
 FAT_BUFFER EQU FAT_RAM_START+0x100
@@ -58,7 +45,8 @@ FAT_BOOT_INIT_DCBs:
 ; Select the correct Drive Control Block based on the drive letter
 ; and copy it into the mirror DCB for easy access
 ; * Drive letter in A
-; * DCB value copied in mirror variables FAT_MIRROR_xxx
+; * DCB value copied in mirror variables FAT_MIRROR_DCB
+; * Return : carry set if Drive Letter incorrect
 FAT_SELECT_MIRROR_DCB:
     PUSH BC
     PUSH DE
@@ -345,12 +333,19 @@ FAT_GetLBAfromCluster:
 ; Cluster Free : 0x0000
 ;  * Cluster to search for in BC
 ; * Result in DE
-; * Z flag if success, NZ Flag is end chain reached
+; * Z flag if success, A==FF if end chain reached
 ; * Carry flag set if bigger than max cluster
 FAT_GetNextCluster : 
     PUSH BC
     PUSH HL
 ; TODO : control BC is not bigger than max cluster
+    LD A,B
+    CP 0x00
+    JP NZ, .getTheFAT
+    LD A, C
+    CP 0x02
+    JP M, .endOfChain
+.getTheFAT:
     PUSH BC
     LD L, B
     LD H, 0x00
@@ -362,7 +357,8 @@ FAT_GetNextCluster :
     LD BC, (FAT_TMP_DWORD +2)
     LD DE, (FAT_TMP_DWORD)
     LD HL, FAT_BUFFER
-    CALL SDCARD_READ_BLOCK
+ ;   CALL SDCARD_READ_BLOCK
+    CALL DISK_READ
     POP BC
 
     LD A, C ; index of the cluster in FAT sector
@@ -386,7 +382,7 @@ FAT_GetNextCluster :
     POP BC
     RET
 .endOfChain:
-    LD A, 0x01
+    LD A, 0xFF
     OR A
     POP HL
     POP BC
@@ -398,15 +394,16 @@ FAT_GetNextCluster :
     RET
 
 
-; Remplit un buffer avec un secteur de répertoire.
+; Read sector BCDE and put the result in FAT_Buffer
+; * the disk is the one in the mirror DCB
+; * Result : Success : A= Drive Letter, carry flag reset
+; * Error : A = Error Code, Carry set
 FAT_ReadDirSector :
-
+    LD A, (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.SDCARD_CS)
+    LD HL, FAT_BUFFER
+    CALL DISK_READ
     RET
 
-; Prend un nom de fichier en entrée, parcourt un cluster, et renvoie le DIRECTORY_ENTRY complet ou son cluster de départ.
-FAT_SearchEntry :
-
-    RET
 
 ; Get a SPC value (power of 2) in A, return the bit number for shift in A
 FAT_GetSPCShift:

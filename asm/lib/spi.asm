@@ -7,7 +7,7 @@
     IFNDEF __SPI__
     DEFINE __SPI__ 1
 
-    INCLUDE "pio.inc"
+    INCLUDE "PIO.inc"
 
 
 PIO_PORT_CFG EQU 0x87 ; MISO in, MOSI out, SCLK out, CS out, RTClk I2C in
