@@ -202,6 +202,23 @@ SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
     DEC HL ; Decrement buffer pointer
     RET
 
+; copy the null_terminated string in (HL) to (DE)
+; * DE at the end of the string for next add
+CopyString:
+    PUSH HL
+.loop:
+    LD A, (HL)
+    CP 0x00
+    JR Z, .exit
+    LD (DE), A
+    INC HL
+    INC DE
+    JP .loop
+.exit:
+    POP HL
+    RET
+
+
 HexChar2Bin: ; convert one 0-9-A-F character (in A) to a number (in A) ; if not a number negative
     XOR 0x30 ; check if line 3x
     CP 0x0A ; Check if num betwwen 0 and 9

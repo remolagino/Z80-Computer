@@ -25,9 +25,9 @@ SHELL_LS:
     JP C, .error
 ; Put the name of the volume:
     LD HL, SHELL_MSG_VolLabel
-    CALL SHELL_CopyString
+    CALL CopyString
     LD HL, FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.VOL_LABEL
-    CALL SHELL_CopyString
+    CALL CopyString
     LD A, 0x0A
     LD (DE), A
     INC DE
@@ -67,26 +67,7 @@ SHELL_LS:
     POP DE
     POP BC
     RET
-
-
-
-
-; copy the null_terminated string in (HL) to (DE)
-; * DE at the end of the string for next add
-SHELL_CopyString:
-    PUSH HL
-.loop:
-    LD A, (HL)
-    CP 0x00
-    JR Z, .exit
-    LD (DE), A
-    INC HL
-    INC DE
-    JP .loop
-.exit:
-    POP HL
-    RET
-    
+   
 
 ; Create a formated string (\n terminated) of the dir entry
 ; * Dir entry in IX

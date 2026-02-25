@@ -398,7 +398,7 @@ FAT_GetNextCluster :
 ; * the disk is the one in the mirror DCB
 ; * Result : Success : A= Drive Letter, carry flag reset
 ; * Error : A = Error Code, Carry set
-FAT_ReadDirSector :
+FAT_ReadSector :
     LD A, (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.SDCARD_CS)
     LD HL, FAT_BUFFER
     CALL DISK_READ

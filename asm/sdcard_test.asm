@@ -15,21 +15,20 @@
 SDCARD_BUFFER  EQU 0x7000
 SDCARD_BUFFER2 EQU SDCARD_BUFFER + 0x0200
 
-SD_CURRENT_DIR :
-    WORD 0x0000
+
 
 Main:
 
-    LD A, '|'
-    LD (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL), A
-    LD (FAT_TMP_DWORD + 4), A
-    LD (FAT_TMP_DWORD + 5), A
-    LD (FAT_TMP_DWORD + 6), A
-    LD (FAT_TMP_DWORD + 7), A
-    LD (FAT_TMP_DWORD + 8), A
-    LD (FAT_TMP_DWORD + 9), A
-    LD (FAT_TMP_DWORD + 10), A
-    LD (FAT_TMP_DWORD + 11), A
+    ; LD A, '|'
+    ; LD (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL), A
+    ; LD (FAT_TMP_DWORD + 4), A
+    ; LD (FAT_TMP_DWORD + 5), A
+    ; LD (FAT_TMP_DWORD + 6), A
+    ; LD (FAT_TMP_DWORD + 7), A
+    ; LD (FAT_TMP_DWORD + 8), A
+    ; LD (FAT_TMP_DWORD + 9), A
+    ; LD (FAT_TMP_DWORD + 10), A
+    ; LD (FAT_TMP_DWORD + 11), A
 
     CALL FAT_BOOT_INIT_DCBs
 
@@ -43,10 +42,17 @@ Main:
 
     LD DE, SDCARD_BUFFER2
     LD A, 'C'
-    LD BC, (SD_CURRENT_DIR)
+    LD BC, 0x0000
+    LD (SD_CURRENT_DIR), BC
     CALL SHELL_LS
     JP C, .initError
     CALL SDCARD_MsgPrintLN
+
+; DEBUG TEST TO BE REMOVED
+    LD A, '/'
+    LD HL, SD_CURRENT_PATH
+    LD (HL), A
+; ------------------
 
 .loop:
     CALL LineEdit_Init
@@ -61,39 +67,84 @@ Main:
     CP '~'
     JP Z, .exit
  
-    ; LD HL, 0x5D00
-    ; CALL FS_FileNamePrep
-    ; JP C, .error
-    ; EX DE, HL
-    ; CALL SDCARD_MsgPrintLN
+    EX DE, HL
+    LD DE, SDCARD_WORKSPACE
+    CALL CopyString
+    LD A, 0x00
+    LD (DE), A
+    EX DE, HL
 
     LD A, 'C'
     LD HL, (SD_CURRENT_DIR)
+    CALL FS_OpenDir
+    JP C, .error
+
     CALL FS_followPath
-;    CALL FS_SearchEntry
     JP C, .notFound
     
-    CALL MATH_WORD_TO_STRING
-    CALL SDCARD_MsgPrintLN
+    LD DE, SDCARD_WORKSPACE
+    LD HL, SD_CURRENT_PATH
+    CALL FS_CanonicalizePath
 
-    LD C, (IX + FAT_DIR_ENTRY.START_CLUSTER)
-    LD B, (IX + FAT_DIR_ENTRY.START_CLUSTER + 1)
+    EX DE, HL
+    CALL SDCARD_MsgPrintLN
+    ; PUSH BC
+    ; PUSH DE
+    ; CALL MATH_WORD_TO_STRING
+    ; CALL SDCARD_MsgPrintLN
+    ; LD B, (IX + FAT_DIR_ENTRY.START_CLUSTER + 2)
+    ; LD C, (IX + FAT_DIR_ENTRY.START_CLUSTER )
+    ; CALL MATH_WORD_TO_STRING
+    ; CALL SDCARD_MsgPrint
+    ; LD DE, SDCARD_SPACE
+    ; CALL SDCARD_MsgPrint
+    ; LD DE, IX
+    ; LD B, 11
+    ; CALL SDCARD_MsgPrintLengthLN
+    ; POP DE
+    ; POP BC
+
+    LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
+    AND 0x10
+    CP 0x10
+    JP NZ, .file
+
     LD (SD_CURRENT_DIR), BC
 
     LD A, 'C'
     LD DE, SDCARD_BUFFER2
     CALL SHELL_LS
     JP C, .error
-    CALL SDCARD_CodePrint
+;    CALL SDCARD_CodePrint
 
     LD DE, SDCARD_BUFFER2
     CALL SDCARD_MsgPrintLN
     
     JP .loop
+.file:
+    PUSH BC
+    PUSH DE
+    LD DE, SD_File
+    CALL SDCARD_MsgPrint
+    LD B, (IX + FAT_DIR_ENTRY.START_CLUSTER + 1)
+    LD C, (IX + FAT_DIR_ENTRY.START_CLUSTER )
+    LD DE, SDCARD_WORKSPACE
+    CALL MATH_WORD_TO_STRING
+    CALL SDCARD_MsgPrint
+    LD DE, SDCARD_SPACE
+    CALL SDCARD_MsgPrint
+    LD DE, IX
+    LD B, 11
+    CALL SDCARD_MsgPrintLengthLN
+    POP DE
+    POP BC
+    JP .loop
 .notFound:
+    PUSH DE
     LD DE, SD_NotFound
     CALL SDCARD_MsgPrint
-    LD DE, LINE_EDIT_BUFFER_ADDRESS
+    POP DE
+;    LD DE, LINE_EDIT_BUFFER_ADDRESS
     CALL SDCARD_MsgPrintLN
     JP .loop
 .exit
@@ -103,49 +154,55 @@ Main:
     JP .loop
 ;    RET
 .initError:
+    PUSH DE
+    LD DE, SDCARD_Init1_MSG
+    CALL SDCARD_MsgPrint
+    POP DE
+
     CALL SDCARD_ErrorMsgPrint
     RET
 
 
-SDCARD_print_FS_Struct:
-    PUSH BC
-    PUSH DE
-    PUSH HL
-    LD DE, SD_FsStructClust
-    CALL SDCARD_MsgPrint
-    LD DE, SDCARD_WORKSPACE
-    LD BC, (FS_VAR + FS_STRUCT.CURR_CLUSTER)
-    CALL MATH_WORD_TO_STRING
-    CALL SDCARD_MsgPrint
+; SDCARD_print_FS_Struct:
+;     PUSH BC
+;     PUSH DE
+;     PUSH HL
+;     LD DE, SD_FsStructClust
+;     CALL SDCARD_MsgPrint
+;     LD DE, SDCARD_WORKSPACE
+;     LD BC, (FS_VAR + FS_STRUCT.CURR_CLUSTER)
+;     CALL MATH_WORD_TO_STRING
+;     CALL SDCARD_MsgPrint
 
-    LD DE, SD_FsStructSect
-    CALL SDCARD_MsgPrint
-    LD DE, SDCARD_WORKSPACE
-    LD BC, FS_VAR + FS_STRUCT.CURR_SECTOR
-    CALL MATH_DWORD_TO_STRING
-    CALL SDCARD_MsgPrint
+;     LD DE, SD_FsStructSect
+;     CALL SDCARD_MsgPrint
+;     LD DE, SDCARD_WORKSPACE
+;     LD BC, FS_VAR + FS_STRUCT.CURR_SECTOR
+;     CALL MATH_DWORD_TO_STRING
+;     CALL SDCARD_MsgPrint
 
-    LD DE, SD_FsStructIdx
-    CALL SDCARD_MsgPrint
-    LD DE, SDCARD_WORKSPACE
-    LD A, (FS_VAR + FS_STRUCT.CURR_SECTOR_IDX)
-    CALL Bin2BCD
-;    LD A, H
-;    CALL Bin2Hex_DE
-    LD A, L
-    CALL Bin2Hex_DE
-    LD A, 0x00
-    LD (DE), A
-    LD DE, SDCARD_WORKSPACE
-    CALL SDCARD_MsgPrintLN
-    POP HL
-    POP DE
-    POP BC
-    RET
-SD_FsStructClust :
-    DB "Cluster : ",0x00
-SD_FsStructSect :
-    DB " - Sector : ",0x00
+;     LD DE, SD_FsStructIdx
+;     CALL SDCARD_MsgPrint
+;     LD DE, SDCARD_WORKSPACE
+;     LD A, (FS_VAR + FS_STRUCT.CURR_SECTOR_IDX)
+;     CALL Bin2BCD
+; ;    LD A, H
+; ;    CALL Bin2Hex_DE
+;     LD A, L
+;     CALL Bin2Hex_DE
+;     LD A, 0x00
+;     LD (DE), A
+;     LD DE, SDCARD_WORKSPACE
+;     CALL SDCARD_MsgPrintLN
+;     POP HL
+;     POP DE
+;     POP BC
+;     RET
+
+SD_Dir :
+    DB "Directory : ",0x00
+SD_File :
+    DB "File : ",0x00
 SD_FsStructIdx :
     DB " - Idx : ",0x00
 SD_FsEnd :
@@ -160,6 +217,17 @@ SDCARD_MsgPrint: ; print message in DE
     LD (CURSOR_IDX), HL
     POP HL
     RET
+
+SDCARD_MsgPrintLengthLN: ; print message in DE, length B
+    PUSH HL
+    LD HL, (CURSOR_IDX)
+    CALL PutS_Length
+    LD DE, LF_CR
+    CALL PutS
+    LD (CURSOR_IDX), HL
+    POP HL
+    RET
+
 SDCARD_MsgPrintLN: ; print message in DE
     PUSH HL
     LD HL, (CURSOR_IDX)
@@ -217,10 +285,20 @@ SDCARD_INIT_SUCCESS_MSG:
     DB "SD Card initialized successfully.", 0x00
 SDCARD_ERRROR_MSG:
     DB "Error: ", 0x00
+SDCARD_SPACE:
+    DB " - ", 0x00
 
-
+; TO BE MOVED TO SHELL COMMAND
 SD_DRIVE_LETTER:
     DB 'C'
+SD_CURRENT_DIR :
+    WORD 0x0000
+SD_START_PATH: ; stop condition for the path canonisation
+; a bit fragile, to be updated
+    DB 0x00
+SD_CURRENT_PATH:
+    BLOCK 0x100, 0x00
+
 SDCARD_WORKSPACE:
     BLOCK 0x10, 0x00
 
