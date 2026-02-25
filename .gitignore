@@ -3,3 +3,5 @@
 
 # Ignore .bin files (binary files)
 *.bin
+
+.vscode/
