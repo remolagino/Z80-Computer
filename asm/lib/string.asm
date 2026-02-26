@@ -95,6 +95,34 @@ Bin2Hex_DE: ; convert a number to hex format (number in A, result in (DE), DE at
     POP AF
     RET
 
+; convert the MS nibble to hex format
+; * Number and result in A
+MSnibble2Hex: 
+    RRCA ; Shift right to get the high nibble
+    RRCA
+    RRCA
+    RRCA
+    AND 0x0F
+    CP 0x0A ; Check if nibble is greater than 9
+    JP NC, .hexDigit ; If not, convert to hex digit
+    OR A, 0x30 ; Convert to ASCII '0' - '9'
+    RET
+.hexDigit:  
+    ADD A, 0x37 ; Convert to ASCII 'A' - 'F'
+    RET
+
+; convert the MS nibble to hex format
+; * Number and result in A
+LSnibble2Hex: 
+    AND 0x0F
+    CP 0x0A ; Check if nibble is greater than 9
+    JP NC, .hexDigit ; If not, convert to hex digit
+    OR A, 0x30 ; Convert to ASCII '0' - '9'
+    RET
+.hexDigit:  
+    ADD A, 0x37 ; Convert to ASCII 'A' - 'F'
+    RET
+
 
 MemoryDump: ;Memory Dump in hex format (address in HL, always 16 x16 bytes, Result in DE)
     PUSH AF

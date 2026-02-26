@@ -19,17 +19,6 @@ SDCARD_BUFFER2 EQU SDCARD_BUFFER + 0x0200
 
 Main:
 
-    ; LD A, '|'
-    ; LD (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL), A
-    ; LD (FAT_TMP_DWORD + 4), A
-    ; LD (FAT_TMP_DWORD + 5), A
-    ; LD (FAT_TMP_DWORD + 6), A
-    ; LD (FAT_TMP_DWORD + 7), A
-    ; LD (FAT_TMP_DWORD + 8), A
-    ; LD (FAT_TMP_DWORD + 9), A
-    ; LD (FAT_TMP_DWORD + 10), A
-    ; LD (FAT_TMP_DWORD + 11), A
-
     CALL FAT_BOOT_INIT_DCBs
 
     LD DE, SDCARD_Init1_MSG
@@ -88,21 +77,6 @@ Main:
 
     EX DE, HL
     CALL SDCARD_MsgPrintLN
-    ; PUSH BC
-    ; PUSH DE
-    ; CALL MATH_WORD_TO_STRING
-    ; CALL SDCARD_MsgPrintLN
-    ; LD B, (IX + FAT_DIR_ENTRY.START_CLUSTER + 2)
-    ; LD C, (IX + FAT_DIR_ENTRY.START_CLUSTER )
-    ; CALL MATH_WORD_TO_STRING
-    ; CALL SDCARD_MsgPrint
-    ; LD DE, SDCARD_SPACE
-    ; CALL SDCARD_MsgPrint
-    ; LD DE, IX
-    ; LD B, 11
-    ; CALL SDCARD_MsgPrintLengthLN
-    ; POP DE
-    ; POP BC
 
     LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
     AND 0x10
@@ -163,41 +137,6 @@ Main:
     RET
 
 
-; SDCARD_print_FS_Struct:
-;     PUSH BC
-;     PUSH DE
-;     PUSH HL
-;     LD DE, SD_FsStructClust
-;     CALL SDCARD_MsgPrint
-;     LD DE, SDCARD_WORKSPACE
-;     LD BC, (FS_VAR + FS_STRUCT.CURR_CLUSTER)
-;     CALL MATH_WORD_TO_STRING
-;     CALL SDCARD_MsgPrint
-
-;     LD DE, SD_FsStructSect
-;     CALL SDCARD_MsgPrint
-;     LD DE, SDCARD_WORKSPACE
-;     LD BC, FS_VAR + FS_STRUCT.CURR_SECTOR
-;     CALL MATH_DWORD_TO_STRING
-;     CALL SDCARD_MsgPrint
-
-;     LD DE, SD_FsStructIdx
-;     CALL SDCARD_MsgPrint
-;     LD DE, SDCARD_WORKSPACE
-;     LD A, (FS_VAR + FS_STRUCT.CURR_SECTOR_IDX)
-;     CALL Bin2BCD
-; ;    LD A, H
-; ;    CALL Bin2Hex_DE
-;     LD A, L
-;     CALL Bin2Hex_DE
-;     LD A, 0x00
-;     LD (DE), A
-;     LD DE, SDCARD_WORKSPACE
-;     CALL SDCARD_MsgPrintLN
-;     POP HL
-;     POP DE
-;     POP BC
-;     RET
 
 SD_Dir :
     DB "Directory : ",0x00

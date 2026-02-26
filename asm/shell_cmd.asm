@@ -8,7 +8,7 @@
     DEFINE __SHELL_CMD__ 1
 
     INCLUDE "./fs_api.asm"
-
+    INCLUDE "./lib/doubleDabble.asm"
 
 ; SHELL_LS : list the files and directory in a directory
 ; * Params : Drive letter in A, cluster number in BC
@@ -45,6 +45,8 @@ SHELL_LS:
     LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
 ;     AND 0x0F
     CP 0x0F
+    JP Z, .nextEntry
+    CP 0x08
     JP Z, .nextEntry
     ; do the stuff on the dir entry
     CALL SHELL_DirEntryProcess
@@ -95,35 +97,102 @@ SHELL_DirEntryProcess:
     LD A, ' '
     LD (DE), A
     INC DE
+    ; LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
+    ; CALL Bin2Hex_DE
+    ; LD A, ' '
+    ; LD (DE), A
+    ; INC DE
+
     LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
-    CALL Bin2Hex_DE
-    LD A, ' '
+    AND 0x20
+    CP 0x20
+    JP Z, .displayName
+    LD A, '<'
+    LD (DE), A
+    INC DE
+    LD A, 'D'
+    LD (DE), A
+    INC DE
+    LD A, 'I'
+    LD (DE), A
+    INC DE
+    LD A, 'R'
+    LD (DE), A
+    INC DE
+    LD A, '>'
+    LD (DE), A
+    INC DE
+.displayName:
+    LD A, 0x09 ; tab
     LD (DE), A
     INC DE
     LD A, ' '
     LD (DE), A
     INC DE
 ; init filename loop
-    PUSH IX
+    PUSH IX ; put IX in HL
     POP HL
-    LD B, 11
+    LD B, 8
 .fileNameLoop:
     LD A, (HL)
+    CP ' '
+    JP Z, .skipSpaceInName
     LD (DE), A
+    INC DE
+.skipSpaceInName:
     INC HL
-    INC DE
     DJNZ .fileNameLoop
+    LD A, '.'
+    LD (DE), A
+    INC DE
+    LD B, 3
+.extLoop:
+    LD A, (HL)
+    CP ' '
+    JP Z, .skipSpaceInExt
+    LD (DE), A
+    INC DE
+.skipSpaceInExt:
+    INC HL
+    DJNZ .extLoop
+    DEC DE
+    LD A, (DE)
+    CP '.'
+    JP NZ, .prepForSize
     LD A, ' '
+    LD (DE), A
+.prepForSize:
+    INC DE
+    LD A, 0x09
     LD (DE), A
     INC DE
     LD A, ' '
     LD (DE), A
     INC DE
-    LD A, (IX + FAT_DIR_ENTRY.START_CLUSTER + 1)
-    CALL Bin2Hex_DE
-    LD A, (IX + FAT_DIR_ENTRY.START_CLUSTER)
-    CALL Bin2Hex_DE
 
+    LD A, (IX + FAT_DIR_ENTRY.ATTRIBUTE)
+    AND 0x20
+    CP 0x20
+    JP NZ, .eol
+
+.displaySize:
+    PUSH DE
+    LD B, (IX + FAT_DIR_ENTRY.SIZE + 3)
+;    CALL Bin2Hex_DE
+    LD C, (IX + FAT_DIR_ENTRY.SIZE + 2)
+;    CALL Bin2Hex_DE
+    LD D, (IX + FAT_DIR_ENTRY.SIZE + 1)
+;    CALL Bin2Hex_DE
+    LD E, (IX + FAT_DIR_ENTRY.SIZE)
+;    CALL Bin2Hex_DE
+    LD HL, FS_WORKSPACE
+    CALL DBDAB_bin2dec_dword
+    POP DE
+;    LD A, 4 ; display all numbers
+;    CALL Dbdab_printable
+    CALL DBDAB_DwordCompactPrintable
+
+.eol:
     LD A, 0x0A
     LD (DE), A
     INC DE
@@ -144,6 +213,7 @@ SHELL_WordToDate:
     LD A, C
     AND 0x1F ; day in 5 LSb
     CALL Bin2BCD
+;    CALL DBDAB_bin2dec_byte
     LD A, L
     CALL Bin2Hex_DE
     LD A, '/'
