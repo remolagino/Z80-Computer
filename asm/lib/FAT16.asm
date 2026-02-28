@@ -12,12 +12,12 @@ FAT_DCB_B EQU FAT_RAM_START
 FAT_DCB_C EQU FAT_DCB_B + FAT_DRIVE_CONTROL
 FAT_MIRROR_DCB EQU FAT_DCB_C + FAT_DRIVE_CONTROL
 
-FAT_TMP_DWORD EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL+1
-FAT_BUFFER EQU FAT_RAM_START+0x100
+FAT_TMP_DWORD EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL
+FAT_BUFFER EQU FAT_TMP_DWORD + 4 ; 0x200 - size of sector
 
     INCLUDE "FAT16.inc"
-    INCLUDE "./lib/math.asm"
-    INCLUDE "./lib/diskio.asm"
+    INCLUDE "./math.asm"
+    INCLUDE "./diskio.asm"
 
 ; Initialise the DCB at system start
 ; set the B: and C: as unmounted
@@ -37,7 +37,7 @@ FAT_BOOT_INIT_DCBs:
     LD A, SPI_CS1_BIT
     LD (FAT_DCB_C + FAT_DRIVE_CONTROL.SDCARD_CS), A
 
-    LD A, ' ' ; reset drive letter in mirror to avoid false positive
+    LD A, 'X' ; reset drive letter in mirror to avoid false positive
     LD (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.DRIVE_LETTER), A
     
     RET
@@ -75,7 +75,13 @@ FAT_SELECT_MIRROR_DCB:
     LDIR
     LD A, (FAT_MIRROR_DCB + FAT_DRIVE_CONTROL.DRIVE_LETTER)
     OR A ; reset the carry
+    POP HL
+    POP DE
+    POP BC
+    RET
 .exit:
+    LD A, '@'
+    OR A
     POP HL
     POP DE
     POP BC
@@ -254,7 +260,6 @@ FAT_MOUNT:
     LD B, (IY + FAT_DRIVE_CONTROL.LBA_ROOT + 3)
     LD HL, FAT_BUFFER
     LD A, (IY + FAT_DRIVE_CONTROL.SDCARD_CS)
-
     CALL DISK_READ
     LD A, 0x93
     JP C, .error

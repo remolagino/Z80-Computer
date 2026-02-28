@@ -11,11 +11,11 @@
 
 ; Convert a binary byte to packed BCD
 ; * byte in A
-; * result in DE 
+; * result in HL 
 DBDAB_bin2dec_byte:
     PUSH AF
     PUSH BC
-    PUSH HL
+    PUSH DE
     LD DE, 0x0000
     LD H, A
     LD B, 8
@@ -30,18 +30,31 @@ DBDAB_bin2dec_byte:
     DAA
     LD D, A
     DJNZ .dbdab_loop
-    POP HL
+    EX DE, HL
+    POP DE
     POP BC
     POP AF
     RET
 
 ; Convert a binary byte to packed BCD
 ; * byte in A
-; * result in (HL) - uses 2 bytes 
-DBDAB_bin2dec_byte_HL:
-    PUSH DE
+; * result in DE - uses 2 bytes 
+DBDAB_bin2dec_byte_DE:
     PUSH HL
     CALL DBDAB_bin2dec_byte
+    EX DE, HL
+    POP HL
+
+
+; Convert a binary byte to packed BCD
+; * byte in A
+; * result in (HL) - uses 2 bytes 
+DBDAB_bin2dec_byte_AddrHL:
+    PUSH DE
+    PUSH HL
+    EX DE, HL
+    CALL DBDAB_bin2dec_byte
+    EX DE, HL
     LD (HL), E
     INC HL
     LD (HL), D

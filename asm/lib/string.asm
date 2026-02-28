@@ -231,8 +231,8 @@ SpaceRemoval: ; Remove leading spaces from the string in (HL) - move (HL)
     RET
 
 ; copy the null_terminated string in (HL) to (DE)
-; * DE at the end of the string for next add
-CopyString:
+; * DE at the end of the string (on 0x00) for next add
+CopyStringHL2DE:
     PUSH HL
 .loop:
     LD A, (HL)
@@ -243,7 +243,26 @@ CopyString:
     INC DE
     JP .loop
 .exit:
+    LD (DE), A
     POP HL
+    RET
+
+
+; copy the null_terminated string in (DE) to (HL)
+; * HL at the end of the string (on 0x00) for next add
+CopyStringDE2HL:
+    PUSH DE
+.loop:
+    LD A, (DE)
+    CP 0x00
+    JR Z, .exit
+    LD (HL), A
+    INC HL
+    INC DE
+    JP .loop
+.exit:
+    LD (HL), A
+    POP DE
     RET
 
 
@@ -366,42 +385,42 @@ HexByte2Bin: ;Convert a byte in hexstring (in (HL)) to a number (in A) Zero flag
     POP BC
     RET
 
-Bin2BCD: ; Convert a hex number in A to BCD in HL
-    PUSH BC
-    PUSH DE
-    LD HL, 0x0000
-    LD B, 0x00 ; Initialize B to 0
-.hundredLoop:
-    INC B
-    SUB 100 ; Subtract 100 from A
-    JP NC, .hundredLoop ; If A >= 100, continue loop
-    DEC B
-    ADD 100
-    LD H, B
-    LD B, 0x00
-.tenLoop:    
-    INC B
-    SUB 10 ; Subtract 10 from A
-    JP NC, .tenLoop ; If A >= 10, continue loop
-    DEC B
-    ADD 10
-    RLC B
-    RLC B
-    RLC B
-    RLC B
-    LD L, B
-    LD B, 0x00 ; Initialize B to 0
-.unitLoop:
-    INC B
-    SUB 1 ; Subtract 1 from a
-    JP NC, .unitLoop ; If A >= 1, continue loop
-    DEC B
-    ADD 1
-    LD A, L
-    OR B
-    LD L, A
-    POP DE
-    POP BC
-    RET
+; Bin2BCD_: ; Convert a hex number in A to BCD in HL
+;     PUSH BC
+;     PUSH DE
+;     LD HL, 0x0000
+;     LD B, 0x00 ; Initialize B to 0
+; .hundredLoop:
+;     INC B
+;     SUB 100 ; Subtract 100 from A
+;     JP NC, .hundredLoop ; If A >= 100, continue loop
+;     DEC B
+;     ADD 100
+;     LD H, B
+;     LD B, 0x00
+; .tenLoop:    
+;     INC B
+;     SUB 10 ; Subtract 10 from A
+;     JP NC, .tenLoop ; If A >= 10, continue loop
+;     DEC B
+;     ADD 10
+;     RLC B
+;     RLC B
+;     RLC B
+;     RLC B
+;     LD L, B
+;     LD B, 0x00 ; Initialize B to 0
+; .unitLoop:
+;     INC B
+;     SUB 1 ; Subtract 1 from a
+;     JP NC, .unitLoop ; If A >= 1, continue loop
+;     DEC B
+;     ADD 1
+;     LD A, L
+;     OR B
+;     LD L, A
+;     POP DE
+;     POP BC
+;     RET
 
     ENDIF
