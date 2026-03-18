@@ -8,7 +8,7 @@
  ;   INCLUDE "./lib/diskio.asm"
     INCLUDE "./monitorv2/memoryMapv2.inc"
     INCLUDE "./monitorv2/lineEdit.asm"
-    INCLUDE "./monitorv2/shell_cmd.asm"
+    INCLUDE "./monitorv2/FAT_cmd.asm"
     INCLUDE "./lib/stdio.asm"
     INCLUDE "./lib/string.asm"
 
@@ -18,9 +18,11 @@ SDCARD_WORKSPACE:
     BLOCK 0x100, 0x00
 
 Main:
-
+    LD A, 0x33
+    LD (0xc0c5), A
+    
     CALL FAT_BOOT_INIT_DCBs
-    CALL SHELL_INIT_DRIVE_C
+    CALL FAT_CMD_INIT_DRIVES
 
     LD DE, SDCARD_Init1_MSG
     CALL SDCARD_MsgPrint
@@ -30,11 +32,18 @@ Main:
     JP C, .initError
     CALL SDCARD_CodePrint
 
+    LD A, 'B'
+    CALL FAT_MOUNT
+    JP C, .initError
+    CALL SDCARD_CodePrint
+
+
 .loop:
+    LD HL, (CURSOR_IDX)
     LD A, '>'
     CALL PutC
     CALL LineEdit_Init
-    LD HL, (CURSOR_IDX)
+    ; LD HL, (CURSOR_IDX)
     CALL LineEdit
     LD DE, LF_CR
     CALL PutS
@@ -52,12 +61,12 @@ Main:
 .ls:
     INC DE
     LD HL, SDCARD_BUFFER
-    CALL SHELL_LS
+    CALL FAT_CMD_LS
     JP .print_result
 .cd:
     INC DE
     LD HL, SDCARD_BUFFER
-    CALL SHELL_CD
+    CALL FAT_CMD_CD
     JP .print_result
 .print_result
     LD DE, SDCARD_BUFFER
@@ -65,6 +74,8 @@ Main:
     
     JP .loop
 .exit
+    LD A, 0x11
+    LD (0xc0c5), A
     RET
 .error:
     CALL SDCARD_ErrorMsgPrint

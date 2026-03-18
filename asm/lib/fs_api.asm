@@ -9,7 +9,7 @@
 
     INCLUDE "./FAT16.asm"
     INCLUDE "./FATtools.asm"
-
+    INCLUDE "../monitorv2/memoryMapv2.inc"
 
     STRUCT FS_STRUCT
 DRIVE BYTE
@@ -20,10 +20,10 @@ CURR_SECTOR_IDX BYTE
 CURR_ENTRY_IDX BYTE
     ENDS
 
-FS_CONTEXT EQU 0x8500
+; FS_CONTEXT EQU 0x8500
 
-FS_FILENAME_PREP EQU FS_CONTEXT + FS_STRUCT ; need 12 chars
-;    BLOCK 0x100, 0x00
+; FS_FILENAME_PREP EQU FS_CONTEXT + FS_STRUCT ; need 12 chars
+
 
 ; Prépare la lecture d'un répertoire (initialise les pointeurs)
 ; * Drive Letter in A

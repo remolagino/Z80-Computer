@@ -215,11 +215,6 @@ Main:
     LD DE, CR_LF; after line edit, start new line
     CALL PutS
 
-; command management
-    ; LD A, (LINE_EDIT_BUFFER_ADDRESS)
-    ; CP 0x00 ; 
-    ; JP Z, .eventLoop ; empty line, nothing to display
-
     LD (CURSOR_IDX), HL ; to get back cursor index in the command
 
     LD BC, COMMAND_LIST
@@ -242,68 +237,30 @@ Main:
     JP .eventLoop
 
 
-.crissCross:
-    PUSH BC
-    PUSH DE
-    LD BC, 80*22
-.crissCrossLoop:
-    CALL CTC3_GetCounter
-    AND 0x01
-    JP Z, .crisscrossChar2
-    LD A, 0x8B
-    JP .crisscrossNextStep
-.crisscrossChar2:
-    LD A, 0x8C
-.crisscrossNextStep:
-    CALL PutC
-    DEC BC
-    LD A, B
-    OR C
-    JP NZ, .crissCrossLoop
-    LD DE, .CRISSCROSS_MSG
-    CALL PutS_LN
-    POP DE
-    POP BC
-    JP .eventLoop
-.CRISSCROSS_MSG: DB 0x00
-
-
-; .charDisplay:
-;     PUSH HL
-;     LD HL, LINE_EDIT_BUFFER_ADDRESS + 2
-;     CALL StrB2Digits
-;     JP NZ, .charDisplayError
-;  ;   LD A, E
-;     LD DE, .CHAR_DISP_STRING + 13
-;     CALL Byte2HexStr
-;     LD DE, .CHAR_DISP_STRING + 19
-;     LD (DE), A
-;     LD DE, .CHAR_DISP_STRING
-;     POP HL
+; .crissCross:
+;     PUSH BC
+;     PUSH DE
+;     LD BC, 80*22
+; .crissCrossLoop:
+;     CALL CTC3_GetCounter
+;     AND 0x01
+;     JP Z, .crisscrossChar2
+;     LD A, 0x8B
+;     JP .crisscrossNextStep
+; .crisscrossChar2:
+;     LD A, 0x8C
+; .crisscrossNextStep:
+;     CALL PutC
+;     DEC BC
+;     LD A, B
+;     OR C
+;     JP NZ, .crissCrossLoop
+;     LD DE, .CRISSCROSS_MSG
 ;     CALL PutS_LN
+;     POP DE
+;     POP BC
 ;     JP .eventLoop
-; .charDisplayError:
-;     POP HL
-;     LD DE, CHAR_DISP_ERROR
-;     CALL PutS_LN
-;     JP .eventLoop
-; .CHAR_DISP_STRING: DB "Character (0x00) : _", 0x00
-
-; .stackPointerRead:
-;     PUSH HL
-;     LD HL, 0xFF00
-;     SBC HL, SP
-;     LD DE, .SP_STRING+18
-;     LD A, H
-;     CALL Byte2HexStr
-;     LD DE, .SP_STRING+20
-;     LD A, L
-;     CALL Byte2HexStr
-;     POP HL
-;     LD DE, .SP_STRING
-;     CALL PutS_LN
-;     JP .eventLoop
-; .SP_STRING: DB "Stack Pointer : 0x0000", 0x00
+; .CRISSCROSS_MSG: DB 0x00
 
 
 

@@ -7,17 +7,18 @@
     IFNDEF __FAT16__
     DEFINE __FAT16__ 1
 
-FAT_RAM_START EQU 0x8000
-FAT_DCB_B EQU FAT_RAM_START
-FAT_DCB_C EQU FAT_DCB_B + FAT_DRIVE_CONTROL
-FAT_MIRROR_DCB EQU FAT_DCB_C + FAT_DRIVE_CONTROL
+; FAT_RAM_START EQU 0x8000
+; FAT_DCB_B EQU FAT_RAM_START
+; FAT_DCB_C EQU FAT_DCB_B + FAT_DRIVE_CONTROL
+; FAT_MIRROR_DCB EQU FAT_DCB_C + FAT_DRIVE_CONTROL
 
-FAT_TMP_DWORD EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL
-FAT_BUFFER EQU FAT_TMP_DWORD + 4 ; 0x200 - size of sector
+; FAT_TMP_DWORD EQU FAT_MIRROR_DCB + FAT_DRIVE_CONTROL
+; FAT_BUFFER EQU FAT_TMP_DWORD + 4 ; 0x200 - size of sector
 
     INCLUDE "FAT16.inc"
     INCLUDE "./math.asm"
     INCLUDE "./diskio.asm"
+    INCLUDE "../monitorv2/memoryMapv2.inc"
 
 ; Initialise the DCB at system start
 ; set the B: and C: as unmounted
@@ -53,7 +54,11 @@ FAT_SELECT_MIRROR_DCB:
     PUSH HL
     CP 'B'
     JP Z, .select_DCB_B
+    CP 'b'
+    JP Z, .select_DCB_B
     CP 'C'
+    JP Z, .select_DCB_C
+    CP 'c'
     JP Z, .select_DCB_C
     LD A, 0x94
     SCF
@@ -98,7 +103,11 @@ FAT_MOUNT:
 
     CP 'B'
     JP Z, .select_DCB_B
+    CP 'b'
+    JP Z, .select_DCB_B
     CP 'C'
+    JP Z, .select_DCB_C
+    CP 'c'
     JP Z, .select_DCB_C
     LD A, 0x94
     JP .selectError
