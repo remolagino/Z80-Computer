@@ -27,7 +27,7 @@ SDCARD_Wait_R1: ; Wait for a response from the SD card - resp in A
     PUSH BC
     PUSH DE
     PUSH HL
-    LD C, 0x30 ; Number of wait bytes to send
+    LD C, 0xFF ; Number of wait bytes to send
 .byteLoop:
     CALL SPI_READ_BYTE ; Read a byte from the SD card
     ; check if E is still 0xFF, if not this is a valid response
@@ -313,6 +313,13 @@ SDCARD_INIT: ; initialize the SD Card
     PUSH HL
     CALL SPI_Init
 
+;    CALL SPI_endCom   ; added
+;     LD B, 10                ; Envoie 80 cycles d'horloge supplémentaires
+; .flushBus:
+;     LD A, 0xFF
+;     CALL SPI_SEND_BYTE_A
+;     DJNZ .flushBus
+
     CP SPI_CS1_BIT
     JP Z, .cs1_select
     CP SPI_CS2_BIT
@@ -325,10 +332,8 @@ SDCARD_INIT: ; initialize the SD Card
 .cs2_select:
     CALL SPI_CS2_SELECT
 .CMD0:
-    ; PUSH AF
-    ; LD A ,'0'
-    ; CALL SendChar_A
-    ; POP AF
+    ; LD A, 0xFF
+    ; CALL SPI_SEND_BYTE_A
 
     LD HL, SDCARD_CMD0 ; Prepare CMD0 command
     CALL SDCARD_SendCmd ; Send CMD0 to SD card

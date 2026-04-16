@@ -147,12 +147,12 @@ FAT_CMD_LS:
     JP NZ, .file
 
 
-    LD HL, (SHELL_CANONICAL_PATH_ADDR)
-    LD A, (HL)
-    LD E, A
-    INC HL
-    LD A, (HL)
-    LD D, A
+    LD DE, (SHELL_CANONICAL_PATH_ADDR)
+    ; LD A, (HL)
+    ; LD E, A
+    ; INC HL
+    ; LD A, (HL)
+    ; LD D, A
 ;    LD DE, SHELL_CANONICAL_PATH
     LD HL, SHELL_TMP_STRING
     CALL CopyStringDE2HL ; copy canonical path to tmp

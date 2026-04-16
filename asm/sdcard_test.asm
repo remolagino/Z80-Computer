@@ -24,18 +24,28 @@ Main:
     CALL FAT_BOOT_INIT_DCBs
     CALL FAT_CMD_INIT_DRIVES
 
-    LD DE, SDCARD_Init1_MSG
-    CALL SDCARD_MsgPrint
+;     LD DE, SDCARD_Init1_MSG
+;     CALL SDCARD_MsgPrint
 
-    LD A, (SHELL_DRIVE_LETTER)
-    CALL FAT_MOUNT
-    JP C, .initError
-    CALL SDCARD_CodePrint
+;     LD A, 'C'
+;     CALL FAT_MOUNT
+;     JP C, .initError
+;     CALL SDCARD_CodePrint
 
-    LD A, 'B'
-    CALL FAT_MOUNT
-    JP C, .initError
-    CALL SDCARD_CodePrint
+;     ld b, 0
+; .delayLoop:
+;     NOP
+;     NOP
+;     NOP
+;     DJNZ .delayLoop
+
+;     LD DE, SDCARD_Init1_MSG
+;     CALL SDCARD_MsgPrint
+
+;     LD A, 'B'
+;     CALL FAT_MOUNT
+;     JP C, .initError
+;     CALL SDCARD_CodePrint
 
 
 .loop:
@@ -57,6 +67,8 @@ Main:
     JP Z, .ls
     CP 'c'
     JP Z, .cd
+    CP 'm'
+    JP Z, .mount
     JP .loop
 .ls:
     INC DE
@@ -71,7 +83,17 @@ Main:
 .print_result
     LD DE, SDCARD_BUFFER
     CALL SDCARD_MsgPrintLN
-    
+    JP .loop
+.mount:
+    PUSH DE
+    LD DE, SDCARD_Init1_MSG
+    CALL SDCARD_MsgPrint
+    POP DE
+    INC DE
+    LD A, (DE)
+    CALL FAT_MOUNT
+;    JP C, .initError
+    CALL SDCARD_CodePrint
     JP .loop
 .exit
     LD A, 0x11
@@ -82,10 +104,10 @@ Main:
     JP .loop
 ;    RET
 .initError:
-    PUSH DE
-    LD DE, SDCARD_Init1_MSG
-    CALL SDCARD_MsgPrint
-    POP DE
+    ; PUSH DE
+    ; LD DE, SDCARD_ERRROR_MSG
+    ; CALL SDCARD_MsgPrint
+    ; POP DE
 
     CALL SDCARD_ErrorMsgPrint
     RET
