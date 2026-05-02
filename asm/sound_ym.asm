@@ -14,6 +14,10 @@ YM_DATA EQU     0x51            ; YM3812 data port
     include "./monitorv2/memoryMapv2.inc"
 
 START:
+
+    LD A, 0x33
+    LD (0xc0c5), A
+
     LD HL, (CURSOR_IDX)
     LD DE, START_MSG
     CALL PutS_LN
@@ -58,6 +62,10 @@ prog_end:
     LD DE, END_MSG
     CALL PutS_LN
     LD (CURSOR_IDX), HL
+
+    LD A, 0x11
+    LD (0xc0c5), A
+
     RET
         
 

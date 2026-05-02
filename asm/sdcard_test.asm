@@ -143,6 +143,11 @@ SDCARD_CodePrint: ; print code in A as hex
     PUSH DE
     PUSH HL
     LD DE, SDCARD_WORKSPACE
+    JP NC, .noCarry
+    LD A, '-'
+    LD (DE), A
+    INC DE
+.noCarry:
     CALL Bin2Hex_DE ; Convert response to string for display
     LD A, 0x00
     LD (DE), A

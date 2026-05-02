@@ -6,6 +6,8 @@
         RST 0x10
     ENDM
 
+    include "../lib/FAT16.inc"
+
 ; ====== STACK Address ======
 STACK_TOP EQU 0xFF00 ; adresse de la pile (top of stack)
 
